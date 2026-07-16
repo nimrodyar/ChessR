@@ -35,7 +35,7 @@ describe('legalMoves', () => {
     expect(moves).toHaveLength(2);
   });
 
-  it('blocks a rook from sliding onto or past a hole', () => {
+  it('lets a rook slide onto a hole (moon drop) but not past it', () => {
     const board = emptyBoard();
     const rook = makePiece('rook', 'white', { x: 0, y: 0 });
     board.pieces.push(rook);
@@ -44,18 +44,20 @@ describe('legalMoves', () => {
     const moves = legalMoves(board, rook);
     const targets = moves.map((m) => m.to);
     expect(targets).toContainEqual({ x: 1, y: 0 });
-    expect(targets).not.toContainEqual({ x: 2, y: 0 });
-    expect(targets).not.toContainEqual({ x: 3, y: 0 });
+    expect(targets).toContainEqual({ x: 2, y: 0 }); // the pit itself is a legal (fatal) destination
+    expect(targets).not.toContainEqual({ x: 3, y: 0 }); // but the slide can't continue past it
   });
 
-  it("does not let a knight land on a hole even though it jumps", () => {
+  it('lets a knight land on a hole even though it jumps (moon drop)', () => {
     const board = emptyBoard();
     const knight = makePiece('knight', 'white', { x: 3, y: 3 });
     board.pieces.push(knight);
     board.tiles[1][4].state = 'hole'; // one of the knight's normal landing squares
 
     const moves = legalMoves(board, knight);
-    expect(moves.map((m) => m.to)).not.toContainEqual({ x: 4, y: 1 });
+    const move = moves.find((m) => m.to.x === 4 && m.to.y === 1);
+    expect(move).toBeDefined();
+    expect(move?.isCapture).toBe(false);
   });
 
   it('lets a bishop capture an enemy piece but not slide past it', () => {

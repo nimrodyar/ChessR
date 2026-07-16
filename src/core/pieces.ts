@@ -3,15 +3,18 @@ export type PieceType = 'pawn' | 'knight' | 'bishop' | 'rook' | 'queen' | 'king'
 export type MutationId =
   | 'pawnLandmine'
   | 'pawnZealot'
+  | 'pawnBloodFrenzy'
   | 'knightCharge'
   | 'knightShadowStep'
   | 'bishopArsonist'
   | 'bishopWard'
   | 'rookDemolisher'
   | 'rookSiegeEngine'
+  | 'rookShackle'
   | 'queenEarthquake'
   | 'queenCataclysm'
-  | 'kingBunker';
+  | 'kingBunker'
+  | 'kingIronVigil';
 
 export interface Position {
   x: number;
@@ -26,6 +29,8 @@ export interface Piece {
   hasMoved: boolean;
   mutations: MutationId[];
   usedActivated?: Partial<Record<MutationId, boolean>>;
+  /** Turns remaining where this piece cannot move. Decremented once per its own side's turn. */
+  frozenTurns?: number;
 }
 
 export function posEq(a: Position, b: Position): boolean {

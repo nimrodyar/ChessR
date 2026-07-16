@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Board } from './board';
-import { activateAbility, applyMove, canActivate } from './combat';
+import { activateAbility, applyMove, canActivate, tickFrozenStatuses } from './combat';
 import { makePiece } from './pieces';
+import { legalMoves } from './rules';
 
 function emptyBoard(): Board {
   return {
@@ -113,5 +114,112 @@ describe('bishopWard', () => {
     expect(board.tiles[3][4].state).toBe('normal');
     expect(result.animations.some((a) => a.type === 'restoreTile')).toBe(true);
     expect(canActivate(bishop, 'bishopWard')).toBe(false);
+  });
+});
+
+describe('moon drop', () => {
+  it('kills a piece that steps onto an existing hole tile', () => {
+    const board = emptyBoard();
+    const rook = makePiece('rook', 'white', { x: 0, y: 0 });
+    board.pieces.push(rook);
+    board.tiles[0][3].state = 'hole';
+
+    const result = applyMove(board, { from: { x: 0, y: 0 }, to: { x: 3, y: 0 }, isCapture: false });
+
+    expect(board.pieces.find((p) => p.id === rook.id)).toBeUndefined();
+    expect(result.animations.some((a) => a.type === 'moonDrop' && a.pieceId === rook.id)).toBe(true);
+    expect(board.tiles[0][3].state).toBe('hole'); // the pit remains
+  });
+
+  it('ends the battle if the king moon drops', () => {
+    const board = emptyBoard();
+    const king = makePiece('king', 'white', { x: 4, y: 4 });
+    board.pieces.push(king, makePiece('king', 'black', { x: 0, y: 0 }));
+    board.tiles[4][5].state = 'hole';
+
+    const result = applyMove(board, { from: { x: 4, y: 4 }, to: { x: 5, y: 4 }, isCapture: false });
+    expect(result.winner).toBe('black');
+  });
+});
+
+describe('frozen status', () => {
+  it('blocks a frozen piece from generating any legal moves', () => {
+    const board = emptyBoard();
+    const rook = makePiece('rook', 'white', { x: 0, y: 0 });
+    rook.frozenTurns = 1;
+    board.pieces.push(rook);
+
+    expect(legalMoves(board, rook)).toHaveLength(0);
+  });
+
+  it('thaws after exactly one tick of its own side', () => {
+    const board = emptyBoard();
+    const rook = makePiece('rook', 'white', { x: 0, y: 0 });
+    rook.frozenTurns = 1;
+    board.pieces.push(rook);
+
+    tickFrozenStatuses(board, 'white');
+    expect(rook.frozenTurns).toBe(0);
+    expect(legalMoves(board, rook).length).toBeGreaterThan(0);
+  });
+
+  it("only decrements the given color's pieces", () => {
+    const board = emptyBoard();
+    const whiteRook = makePiece('rook', 'white', { x: 0, y: 0 });
+    whiteRook.frozenTurns = 2;
+    board.pieces.push(whiteRook);
+
+    tickFrozenStatuses(board, 'black');
+    expect(whiteRook.frozenTurns).toBe(2);
+  });
+});
+
+describe('pawnBloodFrenzy', () => {
+  it('destroys the origin tile and freezes the pawn on capture', () => {
+    const board = emptyBoard();
+    const pawn = makePiece('pawn', 'white', { x: 3, y: 3 });
+    pawn.mutations.push('pawnBloodFrenzy');
+    const enemy = makePiece('pawn', 'black', { x: 4, y: 2 });
+    board.pieces.push(pawn, enemy);
+
+    applyMove(board, { from: { x: 3, y: 3 }, to: { x: 4, y: 2 }, isCapture: true, capturedId: enemy.id });
+
+    expect(board.tiles[3][3].state).toBe('hole');
+    expect(pawn.frozenTurns).toBe(2);
+  });
+});
+
+describe('rookShackle', () => {
+  it('freezes a nearby enemy on capture and always recoils onto the rook itself', () => {
+    const board = emptyBoard();
+    const rook = makePiece('rook', 'white', { x: 0, y: 0 });
+    rook.mutations.push('rookShackle');
+    const enemy = makePiece('pawn', 'black', { x: 3, y: 0 });
+    const bystander = makePiece('pawn', 'black', { x: 3, y: 1 });
+    board.pieces.push(rook, enemy, bystander);
+
+    applyMove(board, { from: { x: 0, y: 0 }, to: { x: 3, y: 0 }, isCapture: true, capturedId: enemy.id });
+
+    expect(bystander.frozenTurns).toBe(1);
+    expect(rook.frozenTurns).toBe(2);
+  });
+});
+
+describe('kingIronVigil', () => {
+  it('mends every adjacent hole and freezes the king, once per battle', () => {
+    const board = emptyBoard();
+    const king = makePiece('king', 'white', { x: 4, y: 4 });
+    king.mutations.push('kingIronVigil');
+    board.pieces.push(king);
+    board.tiles[3][4].state = 'hole';
+    board.tiles[4][3].state = 'hole';
+
+    expect(canActivate(king, 'kingIronVigil')).toBe(true);
+    activateAbility(board, king, 'kingIronVigil');
+
+    expect(board.tiles[3][4].state).toBe('normal');
+    expect(board.tiles[4][3].state).toBe('normal');
+    expect(king.frozenTurns).toBe(2);
+    expect(canActivate(king, 'kingIronVigil')).toBe(false);
   });
 });

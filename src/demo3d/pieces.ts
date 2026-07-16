@@ -110,16 +110,38 @@ export function buildPiece(type: DemoPieceType, color: DemoColor): PieceHandles 
       break;
     }
     case 'knight': {
-      const bodyMesh = robe(color, 0.12, 0.24, 0.55, 0.4);
-      bodyMesh.rotation.z = 0.12;
+      // Deliberately un-hooded, angular horse-head silhouette so it reads instantly
+      // against the bishop's smooth conical hood at a glance.
+      const bodyMesh = robe(color, 0.13, 0.24, 0.46, 0.35);
       group.add(bodyMesh);
-      const hood = capirote(color, 0.85, 0.5, 0.15);
-      hood.rotation.z = 0.55;
-      hood.rotation.x = 0.15;
-      group.add(hood);
-      const trim = goldRing(0.16, 0.02, 0.62);
-      group.add(trim);
-      glowParts.push(trim);
+
+      const neck = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.36, 0.15), stoneMaterial(color));
+      neck.position.set(0, 0.64, 0.01);
+      neck.rotation.x = -0.4;
+      neck.castShadow = true;
+      group.add(neck);
+
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.16, 0.34), stoneMaterial(color));
+      head.position.set(0, 0.9, 0.17);
+      head.rotation.x = -0.55;
+      head.castShadow = true;
+      group.add(head);
+
+      const snout = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.11, 0.14), stoneMaterial(color));
+      snout.position.set(0, 0.83, 0.36);
+      snout.rotation.x = -0.55;
+      snout.castShadow = true;
+      group.add(snout);
+
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.13, 6), goldMaterial());
+      ear.position.set(0, 1.04, 0.05);
+      ear.rotation.x = 0.25;
+      ear.castShadow = true;
+      group.add(ear);
+
+      const mane = goldRing(0.15, 0.02, 0.6);
+      group.add(mane);
+      glowParts.push(mane);
       break;
     }
     case 'bishop': {

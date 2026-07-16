@@ -1,7 +1,7 @@
 import './style.css';
 import { createInitialBoard, pieceAt, type Board } from './core/board';
 import { legalMoves, type Move } from './core/rules';
-import { activateAbility, applyMove, canActivate, type AnimationStep } from './core/combat';
+import { activateAbility, applyMove, canActivate, tickFrozenStatuses, type AnimationStep } from './core/combat';
 import { chooseAiMove } from './core/ai';
 import { pickPerkOptions } from './core/perks';
 import { createScene3D, tickAmbient } from './render/three/scene3d';
@@ -148,6 +148,11 @@ async function main(): Promise<void> {
 
     const clickedPiece = pieceAt(board, pos);
     if (clickedPiece && clickedPiece.color === 'white') {
+      if ((clickedPiece.frozenTurns ?? 0) > 0) {
+        clearSelection();
+        hud.setStatus('That piece is frozen solid!');
+        return;
+      }
       selected = clickedPiece;
       selectedMoves = legalMoves(board, clickedPiece);
       boardView.highlight(
@@ -179,6 +184,7 @@ async function main(): Promise<void> {
     const result = applyMove(board, move);
     const ended = await resolveTurn(result);
     if (ended) return;
+    tickFrozenStatuses(board, 'white');
 
     const capturesTaken = blackBefore - countBlackPieces();
     for (let i = 0; i < capturesTaken; i++) {
@@ -199,6 +205,7 @@ async function main(): Promise<void> {
     const result = applyMove(board, move);
     const ended = await resolveTurn(result);
     if (ended) return;
+    tickFrozenStatuses(board, 'black');
 
     currentTurn = 'white';
     inputLocked = false;
@@ -218,6 +225,7 @@ async function main(): Promise<void> {
     const result = activateAbility(board, piece, abilityId);
     const ended = await resolveTurn(result);
     if (ended) return;
+    tickFrozenStatuses(board, 'white');
 
     const capturesTaken = blackBefore - countBlackPieces();
     for (let i = 0; i < capturesTaken; i++) {

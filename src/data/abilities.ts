@@ -1,5 +1,5 @@
-import { inBounds, isHole } from '../core/board';
-import type { AbilityDef } from '../core/abilities';
+import { inBounds, isHole, pieceAt } from '../core/board';
+import type { AbilityDef, BoardMutation } from '../core/abilities';
 import type { MutationId } from '../core/pieces';
 
 export const ABILITIES: Record<MutationId, AbilityDef> = {
@@ -189,5 +189,78 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     className: 'Paladin',
     // Passive — enforced directly in combat.ts's processMutationQueue rather than fired as an event.
     effect: () => [],
+  },
+
+  // --- Tradeoff relics: real value, real cost — Castlevania-style cursed-item design. ---
+
+  pawnBloodFrenzy: {
+    id: 'pawnBloodFrenzy',
+    name: 'Blood Frenzy',
+    description:
+      'On capturing, the ground behind it shatters from the force of the strike — but the frenzy leaves it frozen solid for its next turn.',
+    trigger: 'onCapture',
+    pieceType: 'pawn',
+    rarity: 'uncommon',
+    className: 'Berserker',
+    effect: ({ move, piece }) => {
+      if (!move) return [];
+      return [
+        { type: 'destroyTile', pos: move.from },
+        // +2, not +1: this fires during the pawn's own side's turn, which immediately
+        // ticks frozen counters down by 1 at turn end, so +2 nets exactly one skipped turn.
+        { type: 'freeze', pieceId: piece.id, turns: 2 },
+      ];
+    },
+  },
+  rookShackle: {
+    id: 'rookShackle',
+    name: 'Chains of the Damned',
+    description:
+      'On capturing, binds the nearest surviving enemy in chains (frozen 1 turn) — but the recoil binds this rook too.',
+    trigger: 'onCapture',
+    pieceType: 'rook',
+    rarity: 'rare',
+    className: 'Hunter',
+    effect: ({ board, move, piece }) => {
+      if (!move) return [];
+      const mutations: BoardMutation[] = [];
+      outer: for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const pos = { x: move.to.x + dx, y: move.to.y + dy };
+          if (!inBounds(pos)) continue;
+          const occupant = pieceAt(board, pos);
+          if (occupant && occupant.color !== piece.color) {
+            mutations.push({ type: 'freeze', pieceId: occupant.id, turns: 1 });
+            break outer;
+          }
+        }
+      }
+      // Self-freeze always applies, whether or not a nearby enemy was found — the chains recoil regardless.
+      mutations.push({ type: 'freeze', pieceId: piece.id, turns: 2 });
+      return mutations;
+    },
+  },
+  kingIronVigil: {
+    id: 'kingIronVigil',
+    name: 'Iron Vigil',
+    description:
+      'Once per battle: a surge of wardstone magic mends every crumbled tile beside the king — but the toll freezes him solid for a turn.',
+    trigger: 'activated',
+    pieceType: 'king',
+    rarity: 'legendary',
+    className: 'Paladin',
+    effect: ({ board, piece }) => {
+      const mutations: BoardMutation[] = [];
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const pos = { x: piece.pos.x + dx, y: piece.pos.y + dy };
+          if (inBounds(pos) && isHole(board, pos)) mutations.push({ type: 'restoreTile', pos });
+        }
+      }
+      mutations.push({ type: 'freeze', pieceId: piece.id, turns: 2 });
+      return mutations;
+    },
   },
 };

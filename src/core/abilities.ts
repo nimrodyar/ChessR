@@ -2,7 +2,10 @@ import type { Board } from './board';
 import type { Move } from './rules';
 import type { MutationId, Piece, PieceType, Position } from './pieces';
 
-export type BoardMutation = { type: 'destroyTile'; pos: Position } | { type: 'restoreTile'; pos: Position };
+export type BoardMutation =
+  | { type: 'destroyTile'; pos: Position }
+  | { type: 'restoreTile'; pos: Position }
+  | { type: 'freeze'; pieceId: string; turns: number };
 
 export type AbilityTrigger = 'onDeath' | 'onCapture' | 'activated';
 

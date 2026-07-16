@@ -76,6 +76,31 @@ function playStep(step: AnimationStep, pieceView: PieceView3D, boardView: BoardV
           .to(group.scale, { x: 0.3, y: 0.3, z: 0.3, duration: FADE_DURATION, ease: 'power2.in' }, '<');
         return;
       }
+      case 'moonDrop': {
+        const group = step.pieceId ? pieceView.getGroup(step.pieceId) : undefined;
+        if (!group || !step.pieceId) return resolve();
+        const pieceId = step.pieceId;
+        pieceView.setAnimating(pieceId, true);
+        burstParticlesAt(scene3d, new THREE.Vector3(group.position.x, 0.15, group.position.z), 0xbfe0ff);
+        gsap
+          .timeline({
+            onComplete: () => {
+              pieceView.removeGroup(pieceId);
+              resolve();
+            },
+          })
+          .to(group.position, { y: -1.8, duration: FADE_DURATION * 1.1, ease: 'power2.in' })
+          .to(group.rotation, { y: Math.PI * 0.6, x: Math.PI * 0.2, duration: FADE_DURATION * 1.1, ease: 'power2.in' }, '<')
+          .to(group.scale, { x: 0.2, y: 0.2, z: 0.2, duration: FADE_DURATION * 1.1, ease: 'power2.in' }, '<');
+        return;
+      }
+      case 'freeze': {
+        const group = step.pieceId ? pieceView.getGroup(step.pieceId) : undefined;
+        if (!group) return resolve();
+        burstParticlesAt(scene3d, new THREE.Vector3(group.position.x, 0.35, group.position.z), 0x9fe0ff);
+        gsap.delayedCall(0.35, resolve);
+        return;
+      }
       case 'destroyTile': {
         if (!step.pos) return resolve();
         const tile = boardView.getTileMesh(step.pos);

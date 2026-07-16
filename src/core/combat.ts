@@ -5,7 +5,7 @@ import type { Color, MutationId, Piece, PieceType, Position } from './pieces';
 import type { Move } from './rules';
 
 export interface AnimationStep {
-  type: 'move' | 'capture' | 'fallThrough' | 'destroyTile' | 'restoreTile' | 'promote';
+  type: 'move' | 'capture' | 'fallThrough' | 'destroyTile' | 'restoreTile' | 'promote' | 'moonDrop' | 'freeze';
   pieceId?: string;
   from?: Position;
   to?: Position;
@@ -42,6 +42,14 @@ function processMutationQueue(board: Board, queue: BoardMutation[], animations: 
       if (!isHole(board, mutation.pos)) continue;
       board.tiles[mutation.pos.y][mutation.pos.x].state = 'normal';
       animations.push({ type: 'restoreTile', pos: mutation.pos });
+      continue;
+    }
+
+    if (mutation.type === 'freeze') {
+      const target = board.pieces.find((p) => p.id === mutation.pieceId);
+      if (!target) continue;
+      target.frozenTurns = (target.frozenTurns ?? 0) + mutation.turns;
+      animations.push({ type: 'freeze', pieceId: target.id, pos: { ...target.pos } });
       continue;
     }
 
@@ -89,18 +97,34 @@ export function applyMove(board: Board, move: Move): TurnResult {
   piece.pos = move.to;
   piece.hasMoved = true;
 
-  if (move.promotion) {
-    piece.type = 'queen';
-    animations.push({ type: 'promote', pieceId: piece.id, pos: { ...piece.pos }, promotedType: 'queen' });
-  }
+  if (isHole(board, move.to)) {
+    // "Moon drop" — the piece stepped onto an existing pit and plunges through.
+    animations.push({ type: 'moonDrop', pieceId: piece.id, pos: { ...piece.pos } });
+    removePiece(board, piece.id);
+    queueAbilities(piece, 'onDeath', undefined, board, mutationQueue);
+  } else {
+    if (move.promotion) {
+      piece.type = 'queen';
+      animations.push({ type: 'promote', pieceId: piece.id, pos: { ...piece.pos }, promotedType: 'queen' });
+    }
 
-  if (move.isCapture) {
-    queueAbilities(piece, 'onCapture', move, board, mutationQueue);
+    if (move.isCapture) {
+      queueAbilities(piece, 'onCapture', move, board, mutationQueue);
+    }
   }
 
   processMutationQueue(board, mutationQueue, animations);
 
   return { animations, winner: determineWinner(board) };
+}
+
+/** Ticks down frozen-status counters for one side, called once at the end of that side's own turn. */
+export function tickFrozenStatuses(board: Board, color: Color): void {
+  for (const piece of board.pieces) {
+    if (piece.color === color && piece.frozenTurns) {
+      piece.frozenTurns = Math.max(0, piece.frozenTurns - 1);
+    }
+  }
 }
 
 export function canActivate(piece: Piece, abilityId: MutationId): boolean {

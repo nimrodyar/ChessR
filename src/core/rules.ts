@@ -40,7 +40,12 @@ function slideMoves(board: Board, piece: Piece, dirs: number[][]): Move[] {
     let x = piece.pos.x + dx;
     let y = piece.pos.y + dy;
     while (inBounds({ x, y })) {
-      if (isHole(board, { x, y })) break; // holes are impassable terrain
+      if (isHole(board, { x, y })) {
+        // A hole can be stepped into — the piece plunges through ("moon drop") — but the
+        // pit is a dead end, so the slide can't continue past it in this direction.
+        moves.push({ from: piece.pos, to: { x, y }, isCapture: false });
+        break;
+      }
       const occupant = pieceAt(board, { x, y });
       if (occupant) {
         if (occupant.color !== piece.color) {
@@ -61,7 +66,11 @@ function stepMoves(board: Board, piece: Piece, offsets: number[][]): Move[] {
   for (const [dx, dy] of offsets) {
     const to = { x: piece.pos.x + dx, y: piece.pos.y + dy };
     if (!inBounds(to)) continue;
-    if (isHole(board, to)) continue; // can't land on a hole, even a knight jumping over others
+    if (isHole(board, to)) {
+      // Stepping onto a hole is legal but fatal — the piece falls through ("moon drop").
+      moves.push({ from: piece.pos, to, isCapture: false });
+      continue;
+    }
     const occupant = pieceAt(board, to);
     if (occupant && occupant.color === piece.color) continue;
     moves.push({ from: piece.pos, to, isCapture: !!occupant, capturedId: occupant?.id });
@@ -76,10 +85,13 @@ function pawnMoves(board: Board, piece: Piece): Move[] {
   const promotionRank = piece.color === 'white' ? 0 : 7;
 
   const oneStep = { x: piece.pos.x, y: piece.pos.y + dir };
-  if (inBounds(oneStep) && !isHole(board, oneStep) && !pieceAt(board, oneStep)) {
-    moves.push({ from: piece.pos, to: oneStep, isCapture: false, promotion: oneStep.y === promotionRank });
+  if (inBounds(oneStep) && !pieceAt(board, oneStep)) {
+    const oneStepIsHole = isHole(board, oneStep);
+    // A pawn can walk into a hole and fall through ("moon drop"); promotion is moot if it dies.
+    moves.push({ from: piece.pos, to: oneStep, isCapture: false, promotion: !oneStepIsHole && oneStep.y === promotionRank });
     const twoStep = { x: piece.pos.x, y: piece.pos.y + dir * 2 };
-    if (piece.pos.y === startRank && inBounds(twoStep) && !isHole(board, twoStep) && !pieceAt(board, twoStep)) {
+    // The two-square opening move needs solid ground to pass through — a pit in the way blocks it.
+    if (!oneStepIsHole && piece.pos.y === startRank && inBounds(twoStep) && !pieceAt(board, twoStep)) {
       moves.push({ from: piece.pos, to: twoStep, isCapture: false });
     }
   }
@@ -101,6 +113,7 @@ function pawnMoves(board: Board, piece: Piece): Move[] {
 }
 
 export function legalMoves(board: Board, piece: Piece): Move[] {
+  if (piece.frozenTurns && piece.frozenTurns > 0) return []; // frozen solid — cannot act this side's turn
   switch (piece.type) {
     case 'pawn':
       return pawnMoves(board, piece);
