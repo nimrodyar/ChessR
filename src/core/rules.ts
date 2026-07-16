@@ -1,5 +1,5 @@
-import { type Board, type Color, inBounds, isHole, pieceAt } from './board';
-import type { Piece, Position } from './pieces';
+import { type Board, cloneBoard, type Color, inBounds, isHole, pieceAt, removePiece } from './board';
+import { opponentColor, posEq, type Piece, type PieceType, type Position } from './pieces';
 
 export interface Move {
   from: Position;
@@ -7,6 +7,12 @@ export interface Move {
   isCapture: boolean;
   capturedId?: string;
   promotion?: boolean;
+  /** Piece type the pawn becomes on promotion; defaults to queen if omitted. */
+  promotionType?: PieceType;
+  /** Set when this move is an en passant capture — capturedId points at the pawn beside `to`, not on it. */
+  enPassant?: boolean;
+  /** Set when this move is a castle; the rook is relocated alongside the king by applyMove. */
+  castle?: 'kingside' | 'queenside';
 }
 
 const ROOK_DIRS = [
@@ -107,13 +113,114 @@ function pawnMoves(board: Board, piece: Piece): Move[] {
         capturedId: occupant.id,
         promotion: diag.y === promotionRank,
       });
+    } else if (!occupant && board.enPassantTarget && posEq(diag, board.enPassantTarget)) {
+      // En passant: the captured pawn sits beside (not on) the destination square.
+      const capturedPawn = pieceAt(board, { x: diag.x, y: piece.pos.y });
+      if (capturedPawn && capturedPawn.color !== piece.color && capturedPawn.type === 'pawn') {
+        moves.push({ from: piece.pos, to: diag, isCapture: true, capturedId: capturedPawn.id, enPassant: true });
+      }
     }
   }
   return moves;
 }
 
-export function legalMoves(board: Board, piece: Piece): Move[] {
-  if (piece.frozenTurns && piece.frozenTurns > 0) return []; // frozen solid — cannot act this side's turn
+/** Does a piece of `byColor` currently threaten `target`? Frozen pieces exert no threat — they cannot act. */
+export function isSquareAttacked(board: Board, target: Position, byColor: Color): boolean {
+  for (const piece of board.pieces) {
+    if (piece.color !== byColor) continue;
+    if (piece.frozenTurns && piece.frozenTurns > 0) continue;
+    switch (piece.type) {
+      case 'pawn': {
+        const dir = piece.color === 'white' ? -1 : 1;
+        if (Math.abs(piece.pos.x - target.x) === 1 && target.y === piece.pos.y + dir) return true;
+        break;
+      }
+      case 'knight':
+        if (KNIGHT_OFFSETS.some(([dx, dy]) => piece.pos.x + dx === target.x && piece.pos.y + dy === target.y)) {
+          return true;
+        }
+        break;
+      case 'king':
+        if (KING_OFFSETS.some(([dx, dy]) => piece.pos.x + dx === target.x && piece.pos.y + dy === target.y)) {
+          return true;
+        }
+        break;
+      case 'bishop':
+        if (rayAttacks(board, piece.pos, BISHOP_DIRS, target)) return true;
+        break;
+      case 'rook':
+        if (rayAttacks(board, piece.pos, ROOK_DIRS, target)) return true;
+        break;
+      case 'queen':
+        if (rayAttacks(board, piece.pos, QUEEN_DIRS, target)) return true;
+        break;
+    }
+  }
+  return false;
+}
+
+function rayAttacks(board: Board, from: Position, dirs: number[][], target: Position): boolean {
+  for (const [dx, dy] of dirs) {
+    let x = from.x + dx;
+    let y = from.y + dy;
+    while (inBounds({ x, y })) {
+      if (x === target.x && y === target.y) return true;
+      if (isHole(board, { x, y }) || pieceAt(board, { x, y })) break;
+      x += dx;
+      y += dy;
+    }
+  }
+  return false;
+}
+
+function findKing(board: Board, color: Color): Piece | undefined {
+  return board.pieces.find((p) => p.color === color && p.type === 'king');
+}
+
+export function isInCheck(board: Board, color: Color): boolean {
+  const king = findKing(board, color);
+  if (!king) return false;
+  return isSquareAttacked(board, king.pos, opponentColor(color));
+}
+
+/** Simulates `move` on a scratch board and reports whether it would leave `color`'s own king in check. */
+function wouldExposeKing(board: Board, move: Move, color: Color): boolean {
+  const scratch = cloneBoard(board);
+  const piece = pieceAt(scratch, move.from);
+  if (!piece) return false;
+  if (move.isCapture && move.capturedId) removePiece(scratch, move.capturedId);
+  piece.pos = move.to;
+  if (isHole(scratch, move.to)) removePiece(scratch, piece.id); // moon drop — the piece is gone either way
+  return isInCheck(scratch, color);
+}
+
+function castlingMoves(board: Board, king: Piece): Move[] {
+  if (king.hasMoved) return [];
+  const opponent = opponentColor(king.color);
+  if (isSquareAttacked(board, king.pos, opponent)) return []; // can't castle out of check
+  const y = king.pos.y;
+  const moves: Move[] = [];
+
+  const kingsideRook = pieceAt(board, { x: 7, y });
+  if (kingsideRook && kingsideRook.type === 'rook' && kingsideRook.color === king.color && !kingsideRook.hasMoved) {
+    const between = [5, 6];
+    const clear = between.every((x) => !pieceAt(board, { x, y }) && !isHole(board, { x, y }));
+    const safe = between.every((x) => !isSquareAttacked(board, { x, y }, opponent));
+    if (clear && safe) moves.push({ from: king.pos, to: { x: 6, y }, isCapture: false, castle: 'kingside' });
+  }
+
+  const queensideRook = pieceAt(board, { x: 0, y });
+  if (queensideRook && queensideRook.type === 'rook' && queensideRook.color === king.color && !queensideRook.hasMoved) {
+    const between = [1, 2, 3];
+    const clear = between.every((x) => !pieceAt(board, { x, y }) && !isHole(board, { x, y }));
+    const safe = [2, 3].every((x) => !isSquareAttacked(board, { x, y }, opponent));
+    if (clear && safe) moves.push({ from: king.pos, to: { x: 2, y }, isCapture: false, castle: 'queenside' });
+  }
+
+  return moves;
+}
+
+function pseudoLegalMoves(board: Board, piece: Piece): Move[] {
   switch (piece.type) {
     case 'pawn':
       return pawnMoves(board, piece);
@@ -126,10 +233,16 @@ export function legalMoves(board: Board, piece: Piece): Move[] {
     case 'queen':
       return slideMoves(board, piece, QUEEN_DIRS);
     case 'king':
-      return stepMoves(board, piece, KING_OFFSETS);
+      return [...stepMoves(board, piece, KING_OFFSETS), ...castlingMoves(board, piece)];
     default:
       return [];
   }
+}
+
+/** Fully legal moves for a single piece: pseudo-legal moves, minus any that would leave its own king in check. */
+export function legalMoves(board: Board, piece: Piece): Move[] {
+  if (piece.frozenTurns && piece.frozenTurns > 0) return []; // frozen solid — cannot act this side's turn
+  return pseudoLegalMoves(board, piece).filter((move) => !wouldExposeKing(board, move, piece.color));
 }
 
 export function allLegalMoves(board: Board, color: Color): Move[] {
@@ -138,4 +251,14 @@ export function allLegalMoves(board: Board, color: Color): Move[] {
 
 export function isKingCaptured(board: Board, color: Color): boolean {
   return !board.pieces.some((p) => p.color === color && p.type === 'king');
+}
+
+/** Checkmate per the classic rule: in check, and no legal move escapes it. */
+export function isCheckmate(board: Board, color: Color): boolean {
+  return isInCheck(board, color) && allLegalMoves(board, color).length === 0;
+}
+
+/** Stalemate per the classic rule: not in check, but no legal move exists — a draw. */
+export function isStalemate(board: Board, color: Color): boolean {
+  return !isInCheck(board, color) && allLegalMoves(board, color).length === 0;
 }

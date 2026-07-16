@@ -1,6 +1,6 @@
 import './style.css';
 import { createInitialBoard, pieceAt, type Board } from './core/board';
-import { legalMoves, type Move } from './core/rules';
+import { isCheckmate, isInCheck, isStalemate, legalMoves, type Move } from './core/rules';
 import { activateAbility, applyMove, canActivate, tickFrozenStatuses, type AnimationStep } from './core/combat';
 import { chooseAiMove } from './core/ai';
 import { pickPerkOptions } from './core/perks';
@@ -10,13 +10,21 @@ import { PieceView3D } from './render/three/pieceView3d';
 import { playAnimations } from './render/three/effects3d';
 import { Hud, type AbilityButtonSpec } from './ui/hud';
 import { RewardScreen } from './ui/rewardScreen';
+import { ChoiceOverlay } from './ui/choiceOverlay';
 import { ABILITIES } from './data/abilities';
-import type { Color, MutationId, Piece, Position } from './core/pieces';
+import { opponentColor, type Color, type MutationId, type Piece, type PieceType, type Position } from './core/pieces';
 
 interface TurnOutcome {
   animations: AnimationStep[];
   winner?: Color;
 }
+
+const PROMOTION_CHOICES: { id: PieceType; label: string }[] = [
+  { id: 'queen', label: 'Queen' },
+  { id: 'rook', label: 'Rook' },
+  { id: 'bishop', label: 'Bishop' },
+  { id: 'knight', label: 'Knight' },
+];
 
 async function main(): Promise<void> {
   const appEl = document.querySelector<HTMLDivElement>('#app');
@@ -33,9 +41,12 @@ async function main(): Promise<void> {
   const pieceView = new PieceView3D(scene3d);
 
   const rewardScreen = new RewardScreen(appEl);
+  const colorSelect = new ChoiceOverlay<Color>(appEl);
+  const promotionSelect = new ChoiceOverlay<PieceType>(appEl);
 
   let board: Board = createInitialBoard();
   let currentTurn: Color = 'white';
+  let humanColor: Color = 'white';
   let selected: Piece | null = null;
   let selectedMoves: Move[] = [];
   let inputLocked = false;
@@ -48,6 +59,10 @@ async function main(): Promise<void> {
     onToggleViewLock: () => toggleViewLock(),
   });
 
+  function aiColor(): Color {
+    return opponentColor(humanColor);
+  }
+
   function toggleViewLock(): void {
     viewLocked = !viewLocked;
     scene3d.controls.enabled = !viewLocked;
@@ -58,7 +73,7 @@ async function main(): Promise<void> {
     ownedMutations.add(mutationId);
     const pieceType = ABILITIES[mutationId].pieceType;
     for (const piece of board.pieces) {
-      if (piece.color === 'white' && piece.type === pieceType && !piece.mutations.includes(mutationId)) {
+      if (piece.color === humanColor && piece.type === pieceType && !piece.mutations.includes(mutationId)) {
         piece.mutations.push(mutationId);
       }
     }
@@ -68,8 +83,8 @@ async function main(): Promise<void> {
     for (const mutationId of ownedMutations) grantMutation(mutationId);
   }
 
-  function countBlackPieces(): number {
-    return board.pieces.filter((p) => p.color === 'black').length;
+  function countPieces(color: Color): number {
+    return board.pieces.filter((p) => p.color === color).length;
   }
 
   function offerPerk(): Promise<void> {
@@ -92,6 +107,12 @@ async function main(): Promise<void> {
     });
   }
 
+  function choosePromotion(): Promise<PieceType> {
+    return new Promise((resolve) => {
+      promotionSelect.show('Promote your pawn', null, PROMOTION_CHOICES, resolve);
+    });
+  }
+
   function clearSelection(): void {
     selected = null;
     selectedMoves = [];
@@ -110,13 +131,13 @@ async function main(): Promise<void> {
   }
 
   function updateAbilityButtons(): void {
-    if (gameOver || currentTurn !== 'white' || inputLocked) {
+    if (gameOver || currentTurn !== humanColor || inputLocked) {
       hud.setAbilityButtons([]);
       return;
     }
     const buttons: AbilityButtonSpec[] = [];
     for (const piece of board.pieces) {
-      if (piece.color !== 'white') continue;
+      if (piece.color !== humanColor) continue;
       for (const mutationId of piece.mutations) {
         const def = ABILITIES[mutationId];
         if (def.trigger === 'activated' && canActivate(piece, mutationId)) {
@@ -131,43 +152,71 @@ async function main(): Promise<void> {
     hud.setAbilityButtons(buttons);
   }
 
+  function showColorPicker(onChosen: () => void): void {
+    colorSelect.show(
+      'Choose Your Side',
+      'White always moves first — classic chess law, no exceptions.',
+      [
+        { id: 'white', label: 'Play as White', description: 'You open the game.' },
+        { id: 'black', label: 'Play as Black', description: 'The AI opens; you answer.' },
+      ],
+      (color) => {
+        humanColor = color;
+        onChosen();
+      },
+    );
+  }
+
   function startBattle(): void {
     board = createInitialBoard();
     applyOwnedMutations();
     currentTurn = 'white';
-    inputLocked = false;
     gameOver = false;
     clearSelection();
     boardView.syncBoard(board);
     pieceView.clear();
     pieceView.syncPieces(board.pieces);
-    hud.setStatus('Your move (white)');
-    updateAbilityButtons();
+    scene3d.worldGroup.rotation.y = humanColor === 'black' ? Math.PI : 0;
     rewardScreen.hide();
+
+    if (currentTurn === humanColor) {
+      inputLocked = false;
+      hud.setStatus(`Your move (${humanColor})`);
+      updateAbilityButtons();
+    } else {
+      inputLocked = true;
+      hud.setStatus('Opponent thinking...');
+      updateAbilityButtons();
+      void runAiTurn();
+    }
   }
 
   /** Fully wipes run progression (every granted perk/mutation) before starting a fresh battle —
    * used by the "Restart Battle" button and after defeat, as opposed to continuing a run after
-   * a win, which intentionally keeps owned mutations. */
+   * a win, which intentionally keeps owned mutations. Re-offers the color choice since it's the
+   * start of a new run. */
   function resetRun(): void {
     ownedMutations.clear();
-    startBattle();
+    showColorPicker(() => startBattle());
   }
 
   async function handleTileClick(pos: Position): Promise<void> {
-    if (inputLocked || gameOver || currentTurn !== 'white') return;
+    if (inputLocked || gameOver || currentTurn !== humanColor) return;
 
     if (selected) {
       const move = selectedMoves.find((m) => m.to.x === pos.x && m.to.y === pos.y);
       if (move) {
         clearSelection();
+        if (move.promotion) {
+          move.promotionType = await choosePromotion();
+        }
         await runPlayerMove(move);
         return;
       }
     }
 
     const clickedPiece = pieceAt(board, pos);
-    if (clickedPiece && clickedPiece.color === 'white') {
+    if (clickedPiece && clickedPiece.color === humanColor) {
       if ((clickedPiece.frozenTurns ?? 0) > 0) {
         clearSelection();
         hud.setStatus('That piece is frozen solid!');
@@ -198,64 +247,85 @@ async function main(): Promise<void> {
     return false;
   }
 
+  /** After `moverColor` finishes acting, hands the turn to whichever side moves next — ending
+   * the battle immediately on checkmate (a win) or stalemate (a draw), per classic chess law. */
+  async function advanceTurnAfter(moverColor: Color): Promise<boolean> {
+    const nextColor = opponentColor(moverColor);
+    if (isCheckmate(board, nextColor)) {
+      await onBattleEnd(moverColor);
+      return true;
+    }
+    if (isStalemate(board, nextColor)) {
+      await onDraw();
+      return true;
+    }
+
+    currentTurn = nextColor;
+    const checkSuffix = isInCheck(board, nextColor) ? ' — Check!' : '';
+    if (nextColor === humanColor) {
+      inputLocked = false;
+      hud.setStatus(`Your move (${humanColor})${checkSuffix}`);
+      updateAbilityButtons();
+    } else {
+      hud.setStatus(`Opponent thinking...${checkSuffix}`);
+      await runAiTurn();
+    }
+    return false;
+  }
+
   async function runPlayerMove(move: Move): Promise<void> {
     inputLocked = true;
     updateAbilityButtons();
-    const blackBefore = countBlackPieces();
+    const opponentBefore = countPieces(aiColor());
     const result = applyMove(board, move);
     const ended = await resolveTurn(result);
     if (ended) return;
-    tickFrozenStatuses(board, 'white');
+    tickFrozenStatuses(board, humanColor);
 
-    const capturesTaken = blackBefore - countBlackPieces();
+    const capturesTaken = opponentBefore - countPieces(aiColor());
     for (let i = 0; i < capturesTaken; i++) {
       await offerPerk();
     }
 
-    currentTurn = 'black';
-    hud.setStatus('Opponent thinking...');
-    await runAiTurn();
+    await advanceTurnAfter(humanColor);
   }
 
   async function runAiTurn(): Promise<void> {
-    const move = chooseAiMove(board, 'black');
+    const move = chooseAiMove(board, aiColor());
     if (!move) {
-      await onBattleEnd('white');
+      // Defensive fallback — advanceTurnAfter already catches checkmate/stalemate before this
+      // is ever reached, but a missing move would otherwise hang the game.
+      await onBattleEnd(humanColor);
       return;
     }
     const result = applyMove(board, move);
     const ended = await resolveTurn(result);
     if (ended) return;
-    tickFrozenStatuses(board, 'black');
+    tickFrozenStatuses(board, aiColor());
 
-    currentTurn = 'white';
-    inputLocked = false;
-    hud.setStatus('Your move (white)');
-    updateAbilityButtons();
+    await advanceTurnAfter(aiColor());
   }
 
   async function activateAbilityOn(piece: Piece, abilityId: MutationId): Promise<void> {
-    if (inputLocked || gameOver || currentTurn !== 'white') return;
+    if (inputLocked || gameOver || currentTurn !== humanColor) return;
     if (!canActivate(piece, abilityId)) return;
 
     clearSelection();
     inputLocked = true;
     updateAbilityButtons();
     hud.setStatus(`${ABILITIES[abilityId].name}!`);
-    const blackBefore = countBlackPieces();
+    const opponentBefore = countPieces(aiColor());
     const result = activateAbility(board, piece, abilityId);
     const ended = await resolveTurn(result);
     if (ended) return;
-    tickFrozenStatuses(board, 'white');
+    tickFrozenStatuses(board, humanColor);
 
-    const capturesTaken = blackBefore - countBlackPieces();
+    const capturesTaken = opponentBefore - countPieces(aiColor());
     for (let i = 0; i < capturesTaken; i++) {
       await offerPerk();
     }
 
-    currentTurn = 'black';
-    hud.setStatus('Opponent thinking...');
-    await runAiTurn();
+    await advanceTurnAfter(humanColor);
   }
 
   async function onBattleEnd(winner: Color): Promise<void> {
@@ -263,19 +333,27 @@ async function main(): Promise<void> {
     inputLocked = true;
     hud.setAbilityButtons([]);
 
-    if (winner === 'white') {
-      hud.setStatus('Victory!');
-      rewardScreen.show('You won! Choose a parting perk:', pickPerkOptions(board, ownedMutations), (id) => {
+    if (winner === humanColor) {
+      hud.setStatus('Checkmate — Victory!');
+      rewardScreen.show('Checkmate! Choose a parting perk:', pickPerkOptions(board, ownedMutations), (id) => {
         ownedMutations.add(id);
         startBattle();
       }, () => startBattle());
     } else {
-      hud.setStatus('Defeat...');
-      rewardScreen.show('Your king fell. Try again?', [], () => resetRun(), () => resetRun());
+      hud.setStatus('Checkmate — Defeat...');
+      rewardScreen.show('Your king is checkmated. Try again?', [], () => resetRun(), () => resetRun());
     }
   }
 
-  startBattle();
+  async function onDraw(): Promise<void> {
+    gameOver = true;
+    inputLocked = true;
+    hud.setAbilityButtons([]);
+    hud.setStatus('Stalemate — a draw.');
+    rewardScreen.show('Stalemate! Neither side can move. Try again?', [], () => resetRun(), () => resetRun());
+  }
+
+  showColorPicker(() => startBattle());
 
   function animate(): void {
     requestAnimationFrame(animate);

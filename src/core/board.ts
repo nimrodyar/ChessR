@@ -9,6 +9,8 @@ export interface Tile {
 export interface Board {
   tiles: Tile[][]; // tiles[y][x]
   pieces: Piece[];
+  /** The square a pawn skipped over on its last double-step move, capturable en passant this turn only. */
+  enPassantTarget?: Position;
 }
 
 export const BOARD_SIZE = 8;
@@ -55,6 +57,7 @@ export function cloneBoard(board: Board): Board {
       mutations: [...p.mutations],
       usedActivated: p.usedActivated ? { ...p.usedActivated } : undefined,
     })),
+    enPassantTarget: board.enPassantTarget ? { ...board.enPassantTarget } : undefined,
   };
 }
 

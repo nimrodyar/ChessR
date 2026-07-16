@@ -1,7 +1,7 @@
 import { type Board, cloneBoard } from './board';
 import { applyMove } from './combat';
 import type { Color, PieceType } from './pieces';
-import { allLegalMoves, isKingCaptured, type Move } from './rules';
+import { allLegalMoves, isInCheck, isKingCaptured, type Move } from './rules';
 
 const PIECE_VALUES: Record<PieceType, number> = {
   pawn: 1,
@@ -41,7 +41,8 @@ export function chooseAiMove(board: Board, color: Color): Move | undefined {
     let worstReplyScore = -Infinity;
     const replies = allLegalMoves(afterMyMove, opponent);
     if (replies.length === 0) {
-      worstReplyScore = evaluate(afterMyMove, color);
+      // No legal replies: checkmate is a decisive win, stalemate just a draw (never a win to chase).
+      worstReplyScore = isInCheck(afterMyMove, opponent) ? -100000 : 0;
     } else {
       for (const reply of replies) {
         const afterReply = cloneBoard(afterMyMove);

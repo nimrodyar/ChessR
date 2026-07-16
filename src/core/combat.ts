@@ -83,6 +83,11 @@ export function applyMove(board: Board, move: Move): TurnResult {
   const piece = pieceAt(board, move.from);
   if (!piece) return { animations };
 
+  const isPawnDoubleStep = piece.type === 'pawn' && Math.abs(move.to.y - move.from.y) === 2;
+  board.enPassantTarget = isPawnDoubleStep
+    ? { x: move.to.x, y: (move.from.y + move.to.y) / 2 }
+    : undefined;
+
   animations.push({ type: 'move', pieceId: piece.id, from: move.from, to: move.to });
 
   if (move.isCapture && move.capturedId) {
@@ -97,6 +102,18 @@ export function applyMove(board: Board, move: Move): TurnResult {
   piece.pos = move.to;
   piece.hasMoved = true;
 
+  if (move.castle) {
+    const y = move.from.y;
+    const rookFromX = move.castle === 'kingside' ? 7 : 0;
+    const rookToX = move.castle === 'kingside' ? 5 : 3;
+    const rook = pieceAt(board, { x: rookFromX, y });
+    if (rook) {
+      animations.push({ type: 'move', pieceId: rook.id, from: { ...rook.pos }, to: { x: rookToX, y } });
+      rook.pos = { x: rookToX, y };
+      rook.hasMoved = true;
+    }
+  }
+
   if (isHole(board, move.to)) {
     // "Moon drop" — the piece stepped onto an existing pit and plunges through.
     animations.push({ type: 'moonDrop', pieceId: piece.id, pos: { ...piece.pos } });
@@ -104,8 +121,9 @@ export function applyMove(board: Board, move: Move): TurnResult {
     queueAbilities(piece, 'onDeath', undefined, board, mutationQueue);
   } else {
     if (move.promotion) {
-      piece.type = 'queen';
-      animations.push({ type: 'promote', pieceId: piece.id, pos: { ...piece.pos }, promotedType: 'queen' });
+      const promotedType = move.promotionType ?? 'queen';
+      piece.type = promotedType;
+      animations.push({ type: 'promote', pieceId: piece.id, pos: { ...piece.pos }, promotedType });
     }
 
     if (move.isCapture) {
