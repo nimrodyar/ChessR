@@ -207,6 +207,21 @@ export class PieceView3D {
     }
   }
 
+  /**
+   * Tears down every tracked piece entry (mesh, mutation gems, frozen shell) and disposes
+   * their GPU resources. Piece IDs are reassigned deterministically each battle
+   * (see resetIdCounter/makePiece), so without this a restart could silently reuse a stale
+   * entry — e.g. a pawn's ID landing on an entry still showing a queen mesh from a promotion
+   * in the previous battle. Call before syncPieces() on any full battle reset.
+   */
+  clear(): void {
+    for (const [, entry] of this.entries) {
+      this.scene3d.pieceGroup.remove(entry.group);
+      disposeGroup(entry.group);
+    }
+    this.entries.clear();
+  }
+
   tick(elapsed: number, selectedId: string | null): void {
     for (const [id, entry] of this.entries) {
       if (entry.animating) continue;

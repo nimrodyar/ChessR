@@ -44,7 +44,7 @@ async function main(): Promise<void> {
   const ownedMutations = new Set<MutationId>();
 
   const hud = new Hud(appEl, {
-    onRestart: () => startBattle(),
+    onRestart: () => resetRun(),
     onToggleViewLock: () => toggleViewLock(),
   });
 
@@ -128,10 +128,19 @@ async function main(): Promise<void> {
     gameOver = false;
     clearSelection();
     boardView.syncBoard(board);
+    pieceView.clear();
     pieceView.syncPieces(board.pieces);
     hud.setStatus('Your move (white)');
     updateAbilityButtons();
     rewardScreen.hide();
+  }
+
+  /** Fully wipes run progression (every granted perk/mutation) before starting a fresh battle —
+   * used by the "Restart Battle" button and after defeat, as opposed to continuing a run after
+   * a win, which intentionally keeps owned mutations. */
+  function resetRun(): void {
+    ownedMutations.clear();
+    startBattle();
   }
 
   async function handleTileClick(pos: Position): Promise<void> {
@@ -250,7 +259,7 @@ async function main(): Promise<void> {
       }, () => startBattle());
     } else {
       hud.setStatus('Defeat...');
-      rewardScreen.show('Your king fell. Try again?', [], () => startBattle(), () => startBattle());
+      rewardScreen.show('Your king fell. Try again?', [], () => resetRun(), () => resetRun());
     }
   }
 
