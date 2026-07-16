@@ -10,7 +10,13 @@ const HALO_COLOR = 0xffb84d;
 function stoneMaterial(color: DemoColor): THREE.MeshStandardMaterial {
   return color === 'white'
     ? new THREE.MeshStandardMaterial({ color: 0xd8cdb4, roughness: 0.75, metalness: 0.05 })
-    : new THREE.MeshStandardMaterial({ color: 0x1c1420, roughness: 0.55, metalness: 0.15 });
+    : new THREE.MeshStandardMaterial({
+        color: 0x3d3248,
+        roughness: 0.5,
+        metalness: 0.15,
+        emissive: 0x1a1024,
+        emissiveIntensity: 0.35,
+      });
 }
 
 function goldMaterial(): THREE.MeshStandardMaterial {

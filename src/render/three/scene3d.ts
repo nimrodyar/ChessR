@@ -15,6 +15,7 @@ export interface Scene3D {
   pieceGroup: THREE.Group;
   tileMeshes: THREE.Mesh[][];
   candle: THREE.PointLight;
+  farCandle: THREE.PointLight;
   emberGeo: THREE.BufferGeometry;
   emberSpeeds: Float32Array;
   emberCount: number;
@@ -80,6 +81,13 @@ export function createScene3D(container: HTMLElement): Scene3D {
   candle.shadow.mapSize.set(1024, 1024);
   candle.shadow.bias = -0.003;
   scene.add(candle);
+
+  const farCandle = new THREE.PointLight(0x8f9fe6, 2.6, 14, 2);
+  farCandle.position.set(1.4, 3.2, -1.6);
+  farCandle.castShadow = true;
+  farCandle.shadow.mapSize.set(1024, 1024);
+  farCandle.shadow.bias = -0.003;
+  scene.add(farCandle);
 
   const rim = new THREE.DirectionalLight(0x6f7bcf, 0.7);
   rim.position.set(3, 4, -4);
@@ -160,6 +168,7 @@ export function createScene3D(container: HTMLElement): Scene3D {
     pieceGroup,
     tileMeshes,
     candle,
+    farCandle,
     emberGeo,
     emberSpeeds,
     emberCount,
@@ -168,6 +177,7 @@ export function createScene3D(container: HTMLElement): Scene3D {
 
 export function tickAmbient(scene3d: Scene3D, elapsed: number): void {
   scene3d.candle.intensity = 3.0 + Math.sin(elapsed * 8) * 0.15 + Math.sin(elapsed * 23) * 0.08;
+  scene3d.farCandle.intensity = 2.6 + Math.sin(elapsed * 7 + 1.7) * 0.12 + Math.sin(elapsed * 19) * 0.06;
 
   const positions = scene3d.emberGeo.attributes.position.array as Float32Array;
   for (let i = 0; i < scene3d.emberCount; i++) {
