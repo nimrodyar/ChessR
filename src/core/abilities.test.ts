@@ -82,3 +82,36 @@ describe('queenEarthquake', () => {
     expect(second.animations).toHaveLength(0);
   });
 });
+
+describe('kingBunker', () => {
+  it('protects the tile a bunkered king stands on from destruction', () => {
+    const board = emptyBoard();
+    const queen = makePiece('queen', 'black', { x: 4, y: 4 });
+    queen.mutations.push('queenEarthquake');
+    const king = makePiece('king', 'white', { x: 4, y: 3 });
+    king.mutations.push('kingBunker');
+    board.pieces.push(queen, king);
+
+    activateAbility(board, queen, 'queenEarthquake');
+
+    expect(board.tiles[3][4].state).toBe('normal');
+    expect(board.pieces.find((p) => p.id === king.id)).toBeDefined();
+  });
+});
+
+describe('bishopWard', () => {
+  it('restores an adjacent hole to solid ground, once per battle', () => {
+    const board = emptyBoard();
+    const bishop = makePiece('bishop', 'white', { x: 3, y: 3 });
+    bishop.mutations.push('bishopWard');
+    board.pieces.push(bishop);
+    board.tiles[3][4].state = 'hole';
+
+    expect(canActivate(bishop, 'bishopWard')).toBe(true);
+    const result = activateAbility(board, bishop, 'bishopWard');
+
+    expect(board.tiles[3][4].state).toBe('normal');
+    expect(result.animations.some((a) => a.type === 'restoreTile')).toBe(true);
+    expect(canActivate(bishop, 'bishopWard')).toBe(false);
+  });
+});

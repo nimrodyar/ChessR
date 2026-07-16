@@ -11,7 +11,7 @@ export interface HighlightTarget {
 const SELECT_COLOR = 0xffcf6b;
 const LEGAL_COLOR = 0x8fd66b;
 const LEGAL_CAPTURE_COLOR = 0xe0483f;
-const DARK_TILE = 0x120d10;
+const DARK_TILE = 0x2a232b;
 const PALE_TILE = 0x8d7a5c;
 const HOLE_TILE = 0x08080c;
 

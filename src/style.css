@@ -185,3 +185,84 @@ body {
   font-size: 13px;
   color: #a8916e;
 }
+
+.reward-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reward-card-class {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #8a6f52;
+}
+
+.reward-card-rarity {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.reward-card-piece {
+  font-style: italic;
+  font-size: 11px;
+  text-transform: capitalize;
+  color: #6b5a44 !important;
+}
+
+.reward-card--common {
+  border-color: #6b4f22;
+}
+
+.reward-card--uncommon {
+  border-color: #3f9142;
+}
+
+.reward-card--uncommon:hover {
+  border-color: #5fc463;
+  box-shadow: 0 0 16px rgba(63, 145, 66, 0.45);
+}
+
+.reward-card--rare {
+  border-color: #3f7cc9;
+}
+
+.reward-card--rare:hover {
+  border-color: #6fa8e0;
+  box-shadow: 0 0 16px rgba(63, 124, 201, 0.45);
+}
+
+.reward-card--legendary {
+  border-color: #d8b463;
+  box-shadow: 0 0 10px rgba(216, 180, 99, 0.35);
+}
+
+.reward-card--legendary:hover {
+  box-shadow: 0 0 20px rgba(216, 180, 99, 0.7);
+}
+
+.reward-card-rarity--common {
+  background: rgba(107, 79, 34, 0.35);
+  color: #c9a876;
+}
+
+.reward-card-rarity--uncommon {
+  background: rgba(63, 145, 66, 0.3);
+  color: #7fdb82;
+}
+
+.reward-card-rarity--rare {
+  background: rgba(63, 124, 201, 0.3);
+  color: #8fc3f2;
+}
+
+.reward-card-rarity--legendary {
+  background: rgba(216, 180, 99, 0.3);
+  color: #ffcf6b;
+}

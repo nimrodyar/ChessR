@@ -1,6 +1,17 @@
 export type Color = 'white' | 'black';
 export type PieceType = 'pawn' | 'knight' | 'bishop' | 'rook' | 'queen' | 'king';
-export type MutationId = 'pawnLandmine' | 'knightCharge' | 'rookDemolisher' | 'queenEarthquake';
+export type MutationId =
+  | 'pawnLandmine'
+  | 'pawnZealot'
+  | 'knightCharge'
+  | 'knightShadowStep'
+  | 'bishopArsonist'
+  | 'bishopWard'
+  | 'rookDemolisher'
+  | 'rookSiegeEngine'
+  | 'queenEarthquake'
+  | 'queenCataclysm'
+  | 'kingBunker';
 
 export interface Position {
   x: number;

@@ -3,23 +3,15 @@ import { createInitialBoard, pieceAt, type Board } from './core/board';
 import { legalMoves, type Move } from './core/rules';
 import { activateAbility, applyMove, canActivate, type AnimationStep } from './core/combat';
 import { chooseAiMove } from './core/ai';
+import { pickPerkOptions } from './core/perks';
 import { createScene3D, tickAmbient } from './render/three/scene3d';
 import { BoardView3D } from './render/three/boardView3d';
 import { PieceView3D } from './render/three/pieceView3d';
 import { playAnimations } from './render/three/effects3d';
-import { Hud } from './ui/hud';
+import { Hud, type AbilityButtonSpec } from './ui/hud';
 import { RewardScreen } from './ui/rewardScreen';
 import { ABILITIES } from './data/abilities';
-import type { Color, MutationId, Piece, PieceType, Position } from './core/pieces';
-
-const PIECE_TYPE_FOR_MUTATION: Record<MutationId, PieceType> = {
-  pawnLandmine: 'pawn',
-  knightCharge: 'knight',
-  rookDemolisher: 'rook',
-  queenEarthquake: 'queen',
-};
-
-const ALL_MUTATIONS: MutationId[] = ['pawnLandmine', 'knightCharge', 'rookDemolisher', 'queenEarthquake'];
+import type { Color, MutationId, Piece, Position } from './core/pieces';
 
 interface TurnOutcome {
   animations: AnimationStep[];
@@ -48,22 +40,56 @@ async function main(): Promise<void> {
   let selectedMoves: Move[] = [];
   let inputLocked = false;
   let gameOver = false;
+  let viewLocked = false;
   const ownedMutations = new Set<MutationId>();
 
   const hud = new Hud(appEl, {
     onRestart: () => startBattle(),
-    onActivateAbility: () => void activateQueenAbility(),
+    onToggleViewLock: () => toggleViewLock(),
   });
 
-  function applyOwnedMutations(): void {
+  function toggleViewLock(): void {
+    viewLocked = !viewLocked;
+    scene3d.controls.enabled = !viewLocked;
+    hud.setViewLocked(viewLocked);
+  }
+
+  function grantMutation(mutationId: MutationId): void {
+    ownedMutations.add(mutationId);
+    const pieceType = ABILITIES[mutationId].pieceType;
     for (const piece of board.pieces) {
-      if (piece.color !== 'white') continue;
-      for (const mutationId of ownedMutations) {
-        if (PIECE_TYPE_FOR_MUTATION[mutationId] === piece.type && !piece.mutations.includes(mutationId)) {
-          piece.mutations.push(mutationId);
-        }
+      if (piece.color === 'white' && piece.type === pieceType && !piece.mutations.includes(mutationId)) {
+        piece.mutations.push(mutationId);
       }
     }
+  }
+
+  function applyOwnedMutations(): void {
+    for (const mutationId of ownedMutations) grantMutation(mutationId);
+  }
+
+  function countBlackPieces(): number {
+    return board.pieces.filter((p) => p.color === 'black').length;
+  }
+
+  function offerPerk(): Promise<void> {
+    return new Promise((resolve) => {
+      const options = pickPerkOptions(board, ownedMutations);
+      if (options.length === 0) {
+        resolve();
+        return;
+      }
+      rewardScreen.show(
+        'A perk manifests from the fallen...',
+        options,
+        (id) => {
+          grantMutation(id);
+          updateAbilityButtons();
+          resolve();
+        },
+        () => resolve(),
+      );
+    });
   }
 
   function clearSelection(): void {
@@ -72,11 +98,26 @@ async function main(): Promise<void> {
     boardView.highlight(null, []);
   }
 
-  function updateAbilityButton(): void {
-    const queen = board.pieces.find((p) => p.color === 'white' && p.type === 'queen');
-    const available =
-      !gameOver && currentTurn === 'white' && !inputLocked && !!queen && canActivate(queen, 'queenEarthquake');
-    hud.setAbilityAvailable(available);
+  function updateAbilityButtons(): void {
+    if (gameOver || currentTurn !== 'white' || inputLocked) {
+      hud.setAbilityButtons([]);
+      return;
+    }
+    const buttons: AbilityButtonSpec[] = [];
+    for (const piece of board.pieces) {
+      if (piece.color !== 'white') continue;
+      for (const mutationId of piece.mutations) {
+        const def = ABILITIES[mutationId];
+        if (def.trigger === 'activated' && canActivate(piece, mutationId)) {
+          buttons.push({
+            id: `${piece.id}:${mutationId}`,
+            label: `${def.name} (${piece.type})`,
+            onClick: () => void activateAbilityOn(piece, mutationId),
+          });
+        }
+      }
+    }
+    hud.setAbilityButtons(buttons);
   }
 
   function startBattle(): void {
@@ -89,7 +130,7 @@ async function main(): Promise<void> {
     boardView.syncBoard(board);
     pieceView.syncPieces(board.pieces);
     hud.setStatus('Your move (white)');
-    updateAbilityButton();
+    updateAbilityButtons();
     rewardScreen.hide();
   }
 
@@ -133,10 +174,16 @@ async function main(): Promise<void> {
 
   async function runPlayerMove(move: Move): Promise<void> {
     inputLocked = true;
-    updateAbilityButton();
+    updateAbilityButtons();
+    const blackBefore = countBlackPieces();
     const result = applyMove(board, move);
     const ended = await resolveTurn(result);
     if (ended) return;
+
+    const capturesTaken = blackBefore - countBlackPieces();
+    for (let i = 0; i < capturesTaken; i++) {
+      await offerPerk();
+    }
 
     currentTurn = 'black';
     hud.setStatus('Opponent thinking...');
@@ -156,21 +203,26 @@ async function main(): Promise<void> {
     currentTurn = 'white';
     inputLocked = false;
     hud.setStatus('Your move (white)');
-    updateAbilityButton();
+    updateAbilityButtons();
   }
 
-  async function activateQueenAbility(): Promise<void> {
+  async function activateAbilityOn(piece: Piece, abilityId: MutationId): Promise<void> {
     if (inputLocked || gameOver || currentTurn !== 'white') return;
-    const queen = board.pieces.find((p) => p.color === 'white' && p.type === 'queen');
-    if (!queen || !canActivate(queen, 'queenEarthquake')) return;
+    if (!canActivate(piece, abilityId)) return;
 
     clearSelection();
     inputLocked = true;
-    updateAbilityButton();
-    hud.setStatus('Earthquake!');
-    const result = activateAbility(board, queen, 'queenEarthquake');
+    updateAbilityButtons();
+    hud.setStatus(`${ABILITIES[abilityId].name}!`);
+    const blackBefore = countBlackPieces();
+    const result = activateAbility(board, piece, abilityId);
     const ended = await resolveTurn(result);
     if (ended) return;
+
+    const capturesTaken = blackBefore - countBlackPieces();
+    for (let i = 0; i < capturesTaken; i++) {
+      await offerPerk();
+    }
 
     currentTurn = 'black';
     hud.setStatus('Opponent thinking...');
@@ -180,22 +232,14 @@ async function main(): Promise<void> {
   async function onBattleEnd(winner: Color): Promise<void> {
     gameOver = true;
     inputLocked = true;
-    hud.setAbilityAvailable(false);
+    hud.setAbilityButtons([]);
 
     if (winner === 'white') {
       hud.setStatus('Victory!');
-      const options = ALL_MUTATIONS.filter((id) => !ownedMutations.has(id))
-        .slice(0, 3)
-        .map((id) => ABILITIES[id]);
-      rewardScreen.show(
-        'You won! Choose a mutation for your next battle:',
-        options,
-        (mutationId) => {
-          ownedMutations.add(mutationId);
-          startBattle();
-        },
-        () => startBattle(),
-      );
+      rewardScreen.show('You won! Choose a parting perk:', pickPerkOptions(board, ownedMutations), (id) => {
+        ownedMutations.add(id);
+        startBattle();
+      }, () => startBattle());
     } else {
       hud.setStatus('Defeat...');
       rewardScreen.show('Your king fell. Try again?', [], () => startBattle(), () => startBattle());

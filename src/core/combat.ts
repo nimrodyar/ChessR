@@ -5,7 +5,7 @@ import type { Color, MutationId, Piece, PieceType, Position } from './pieces';
 import type { Move } from './rules';
 
 export interface AnimationStep {
-  type: 'move' | 'capture' | 'fallThrough' | 'destroyTile' | 'promote';
+  type: 'move' | 'capture' | 'fallThrough' | 'destroyTile' | 'restoreTile' | 'promote';
   pieceId?: string;
   from?: Position;
   to?: Position;
@@ -37,7 +37,18 @@ function queueAbilities(
 function processMutationQueue(board: Board, queue: BoardMutation[], animations: AnimationStep[]): void {
   while (queue.length > 0) {
     const mutation = queue.shift()!;
+
+    if (mutation.type === 'restoreTile') {
+      if (!isHole(board, mutation.pos)) continue;
+      board.tiles[mutation.pos.y][mutation.pos.x].state = 'normal';
+      animations.push({ type: 'restoreTile', pos: mutation.pos });
+      continue;
+    }
+
     if (isHole(board, mutation.pos)) continue;
+    const guardian = pieceAt(board, mutation.pos);
+    if (guardian?.type === 'king' && guardian.mutations.includes('kingBunker')) continue;
+
     board.tiles[mutation.pos.y][mutation.pos.x].state = 'hole';
     animations.push({ type: 'destroyTile', pos: mutation.pos });
 

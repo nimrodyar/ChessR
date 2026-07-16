@@ -24,15 +24,23 @@ export class RewardScreen {
 
     if (options.length === 0) {
       const msg = document.createElement('p');
-      msg.textContent = "You've unlocked every starter mutation. Well fought!";
+      msg.textContent = 'No perks remain to claim right now.';
       panel.appendChild(msg);
     } else {
       const cardRow = document.createElement('div');
       cardRow.className = 'reward-cards';
       for (const ability of options) {
         const card = document.createElement('button');
-        card.className = 'reward-card';
-        card.innerHTML = `<strong>${ability.name}</strong><span>${ability.description}</span>`;
+        card.className = `reward-card reward-card--${ability.rarity}`;
+        card.innerHTML = `
+          <div class="reward-card-header">
+            <span class="reward-card-class">${ability.className}</span>
+            <span class="reward-card-rarity reward-card-rarity--${ability.rarity}">${ability.rarity}</span>
+          </div>
+          <strong>${ability.name}</strong>
+          <span class="reward-card-piece">${ability.pieceType}</span>
+          <span>${ability.description}</span>
+        `;
         card.onclick = () => {
           this.hide();
           onPick(ability.id);

@@ -103,6 +103,20 @@ function playStep(step: AnimationStep, pieceView: PieceView3D, boardView: BoardV
           .to(crack.material as THREE.MeshStandardMaterial, { emissiveIntensity: 1.8, duration: SUNDER_DURATION * 0.7 }, '<');
         return;
       }
+      case 'restoreTile': {
+        if (!step.pos) return resolve();
+        const tile = boardView.getTileMesh(step.pos);
+        burstParticlesAt(scene3d, new THREE.Vector3(tile.position.x, 0.05, tile.position.z), 0x9fe6a0);
+        gsap
+          .timeline({
+            onComplete: () => {
+              boardView.drawTile(step.pos!.x, step.pos!.y, 'normal');
+              resolve();
+            },
+          })
+          .to(tile.position, { y: -0.09, duration: SUNDER_DURATION, ease: 'power2.out' });
+        return;
+      }
       case 'promote': {
         if (step.pieceId && step.promotedType) pieceView.setType(step.pieceId, step.promotedType);
         const group = step.pieceId ? pieceView.getGroup(step.pieceId) : undefined;

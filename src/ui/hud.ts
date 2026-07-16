@@ -1,11 +1,18 @@
+export interface AbilityButtonSpec {
+  id: string;
+  label: string;
+  onClick: () => void;
+}
+
 export interface HudCallbacks {
   onRestart: () => void;
-  onActivateAbility: () => void;
+  onToggleViewLock: () => void;
 }
 
 export class Hud {
   private statusEl: HTMLDivElement;
-  private abilityBtn: HTMLButtonElement;
+  private abilityRow: HTMLDivElement;
+  private lockBtn: HTMLButtonElement;
 
   constructor(container: HTMLElement, callbacks: HudCallbacks) {
     const root = document.createElement('div');
@@ -15,15 +22,18 @@ export class Hud {
     this.statusEl.className = 'hud-status';
     root.appendChild(this.statusEl);
 
+    this.abilityRow = document.createElement('div');
+    this.abilityRow.className = 'hud-buttons';
+    root.appendChild(this.abilityRow);
+
     const buttonRow = document.createElement('div');
     buttonRow.className = 'hud-buttons';
 
-    this.abilityBtn = document.createElement('button');
-    this.abilityBtn.textContent = 'Activate Earthquake';
-    this.abilityBtn.className = 'hud-button hud-button-ability';
-    this.abilityBtn.style.display = 'none';
-    this.abilityBtn.onclick = () => callbacks.onActivateAbility();
-    buttonRow.appendChild(this.abilityBtn);
+    this.lockBtn = document.createElement('button');
+    this.lockBtn.textContent = 'Lock View';
+    this.lockBtn.className = 'hud-button';
+    this.lockBtn.onclick = () => callbacks.onToggleViewLock();
+    buttonRow.appendChild(this.lockBtn);
 
     const restartBtn = document.createElement('button');
     restartBtn.textContent = 'Restart Battle';
@@ -39,7 +49,18 @@ export class Hud {
     this.statusEl.textContent = text;
   }
 
-  setAbilityAvailable(available: boolean): void {
-    this.abilityBtn.style.display = available ? 'inline-block' : 'none';
+  setAbilityButtons(buttons: AbilityButtonSpec[]): void {
+    this.abilityRow.innerHTML = '';
+    for (const spec of buttons) {
+      const btn = document.createElement('button');
+      btn.textContent = spec.label;
+      btn.className = 'hud-button hud-button-ability';
+      btn.onclick = () => spec.onClick();
+      this.abilityRow.appendChild(btn);
+    }
+  }
+
+  setViewLocked(locked: boolean): void {
+    this.lockBtn.textContent = locked ? 'Unlock View' : 'Lock View';
   }
 }

@@ -43,7 +43,7 @@ const spriteTexture = makeSpriteTexture();
 
 export function createScene3D(container: HTMLElement): Scene3D {
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x030203, 0.055);
+  scene.fog = new THREE.FogExp2(0x030203, 0.03);
 
   const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.set(0.5, 6.6, 7.6);
@@ -54,7 +54,7 @@ export function createScene3D(container: HTMLElement): Scene3D {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
+  renderer.toneMappingExposure = 1.3;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   container.appendChild(renderer.domElement);
 
@@ -72,7 +72,7 @@ export function createScene3D(container: HTMLElement): Scene3D {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  scene.add(new THREE.AmbientLight(0x2a2035, 0.55));
+  scene.add(new THREE.AmbientLight(0x3a3048, 0.9));
 
   const candle = new THREE.PointLight(0xffa554, 3.2, 14, 2);
   candle.position.set(-1.4, 3.2, 1.6);
@@ -81,11 +81,11 @@ export function createScene3D(container: HTMLElement): Scene3D {
   candle.shadow.bias = -0.003;
   scene.add(candle);
 
-  const rim = new THREE.DirectionalLight(0x6f7bcf, 0.55);
+  const rim = new THREE.DirectionalLight(0x6f7bcf, 0.7);
   rim.position.set(3, 4, -4);
   scene.add(rim);
 
-  const fill = new THREE.HemisphereLight(0x342c4a, 0x0a0608, 0.35);
+  const fill = new THREE.HemisphereLight(0x463c5e, 0x14101a, 0.6);
   scene.add(fill);
 
   const worldGroup = new THREE.Group();
@@ -97,7 +97,7 @@ export function createScene3D(container: HTMLElement): Scene3D {
   const pieceGroup = new THREE.Group();
   worldGroup.add(pieceGroup);
 
-  const darkStone = new THREE.MeshStandardMaterial({ color: 0x120d10, roughness: 0.75, metalness: 0.05 });
+  const darkStone = new THREE.MeshStandardMaterial({ color: 0x2a232b, roughness: 0.75, metalness: 0.05 });
   const paleStone = new THREE.MeshStandardMaterial({ color: 0x8d7a5c, roughness: 0.7, metalness: 0.05 });
   const goldTrim = new THREE.MeshStandardMaterial({
     color: 0xc9a227,
