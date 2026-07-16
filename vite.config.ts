@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/chess-rogue/' : '/',
+  base: command === 'build' ? '/ChessR/' : '/',
   build: {
     rollupOptions: {
       input: {
