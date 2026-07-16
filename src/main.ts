@@ -96,6 +96,17 @@ async function main(): Promise<void> {
     selected = null;
     selectedMoves = [];
     boardView.highlight(null, []);
+    hud.setSelectedPieceInfo(null);
+  }
+
+  function showSelectedPieceInfo(piece: Piece): void {
+    hud.setSelectedPieceInfo({
+      label: `${piece.color} ${piece.type}`,
+      abilities: piece.mutations.map((mutationId) => {
+        const def = ABILITIES[mutationId];
+        return { name: def.name, description: def.description, rarity: def.rarity };
+      }),
+    });
   }
 
   function updateAbilityButtons(): void {
@@ -168,6 +179,7 @@ async function main(): Promise<void> {
         clickedPiece.pos,
         selectedMoves.map((m) => ({ pos: m.to, isCapture: m.isCapture })),
       );
+      showSelectedPieceInfo(clickedPiece);
     } else {
       clearSelection();
     }

@@ -1,3 +1,5 @@
+import type { AbilityRarity } from '../core/abilities';
+
 export interface AbilityButtonSpec {
   id: string;
   label: string;
@@ -9,10 +11,16 @@ export interface HudCallbacks {
   onToggleViewLock: () => void;
 }
 
+export interface SelectedPieceInfo {
+  label: string;
+  abilities: { name: string; description: string; rarity: AbilityRarity }[];
+}
+
 export class Hud {
   private statusEl: HTMLDivElement;
   private abilityRow: HTMLDivElement;
   private lockBtn: HTMLButtonElement;
+  private pieceInfoEl: HTMLDivElement;
 
   constructor(container: HTMLElement, callbacks: HudCallbacks) {
     const root = document.createElement('div');
@@ -43,6 +51,33 @@ export class Hud {
 
     root.appendChild(buttonRow);
     container.appendChild(root);
+
+    this.pieceInfoEl = document.createElement('div');
+    this.pieceInfoEl.className = 'piece-info-panel';
+    this.pieceInfoEl.style.display = 'none';
+    container.appendChild(this.pieceInfoEl);
+  }
+
+  setSelectedPieceInfo(info: SelectedPieceInfo | null): void {
+    if (!info) {
+      this.pieceInfoEl.style.display = 'none';
+      this.pieceInfoEl.innerHTML = '';
+      return;
+    }
+    this.pieceInfoEl.style.display = 'flex';
+    const abilityHtml =
+      info.abilities.length === 0
+        ? '<div class="piece-info-empty">No perks granted yet</div>'
+        : info.abilities
+            .map(
+              (a) => `
+          <div class="piece-info-ability piece-info-ability--${a.rarity}">
+            <div class="piece-info-ability-name">${a.name}</div>
+            <div class="piece-info-ability-desc">${a.description}</div>
+          </div>`,
+            )
+            .join('');
+    this.pieceInfoEl.innerHTML = `<div class="piece-info-title">${info.label}</div>${abilityHtml}`;
   }
 
   setStatus(text: string): void {

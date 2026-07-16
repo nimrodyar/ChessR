@@ -25,28 +25,36 @@ const RARITY_GEM_COLORS: Record<AbilityRarity, { color: number; emissive: number
   legendary: { color: 0xffcf6b, emissive: 0x6b4a1a },
 };
 
-/** Small rarity-colored gems orbiting the piece so its granted perks read at a glance on the board. */
+/** Rarity-colored gems orbiting the piece so its granted perks read at a glance on the board. */
 function buildMutationGems(mutationIds: MutationId[]): THREE.Group {
   const group = new THREE.Group();
-  const radius = 0.27;
-  const y = 0.34;
+  const radius = 0.36;
+  const y = 0.55;
   mutationIds.forEach((id, i) => {
     const def = ABILITIES[id];
     const palette = RARITY_GEM_COLORS[def.rarity];
+    const angle = (i / Math.max(mutationIds.length, 1)) * Math.PI * 2;
     const gem = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.045, 0),
+      new THREE.OctahedronGeometry(0.09, 0),
       new THREE.MeshStandardMaterial({
         color: palette.color,
         emissive: palette.emissive,
-        emissiveIntensity: 0.85,
-        roughness: 0.25,
-        metalness: 0.6,
+        emissiveIntensity: 1.8,
+        roughness: 0.15,
+        metalness: 0.75,
       }),
     );
-    const angle = (i / Math.max(mutationIds.length, 1)) * Math.PI * 2;
     gem.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
     gem.castShadow = true;
     group.add(gem);
+
+    // Small glowing halo ring behind each gem so it pops against dark pieces/tiles from any angle.
+    const spark = new THREE.Mesh(
+      new THREE.RingGeometry(0.09, 0.13, 12),
+      new THREE.MeshBasicMaterial({ color: palette.color, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+    );
+    spark.position.copy(gem.position);
+    group.add(spark);
   });
   return group;
 }
@@ -105,7 +113,10 @@ export class PieceView3D {
         const world = boardToWorld(piece.pos.x, piece.pos.y);
         entry.group.position.set(world.x, 0, world.z);
         entry.group.scale.set(1, 1, 1);
-        entry.group.rotation.set(0, 0, 0);
+        // Black pieces face the opposite way from white (they attack "down" the board rather
+        // than "up" it), so mirror asymmetric silhouettes like the knight's head 180° — otherwise
+        // both colors' knights face the same absolute direction and black's looks backwards.
+        entry.group.rotation.set(0, entry.color === 'black' ? Math.PI : 0, 0);
         entry.group.visible = true;
       }
       if (!sameMutations(entry.mutationIds, piece.mutations)) {
@@ -232,6 +243,7 @@ export class PieceView3D {
       entry.lift += (targetLift - entry.lift) * 0.15;
       entry.group.position.y = entry.lift + bob;
       if (entry.halo) entry.halo.rotation.z = elapsed * 0.8;
+      if (entry.mutationIds.length > 0) entry.mutationGroup.rotation.y = elapsed * 0.6;
     }
   }
 }
