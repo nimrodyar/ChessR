@@ -44,7 +44,7 @@ const spriteTexture = makeSpriteTexture();
 
 export function createScene3D(container: HTMLElement): Scene3D {
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x030203, 0.03);
+  scene.fog = new THREE.FogExp2(0x0a0810, 0.022);
 
   const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.set(0.5, 6.6, 7.6);
@@ -55,7 +55,7 @@ export function createScene3D(container: HTMLElement): Scene3D {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.3;
+  renderer.toneMappingExposure = 1.7;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   container.appendChild(renderer.domElement);
 
@@ -73,27 +73,31 @@ export function createScene3D(container: HTMLElement): Scene3D {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  scene.add(new THREE.AmbientLight(0x3a3048, 0.9));
+  scene.add(new THREE.AmbientLight(0x574b6e, 1.5));
 
-  const candle = new THREE.PointLight(0xffa554, 3.2, 14, 2);
-  candle.position.set(-1.4, 3.2, 1.6);
+  const candle = new THREE.PointLight(0xffa554, 4.2, 22, 1);
+  candle.position.set(-1.4, 3.4, 1.6);
   candle.castShadow = true;
   candle.shadow.mapSize.set(1024, 1024);
   candle.shadow.bias = -0.003;
   scene.add(candle);
 
-  const farCandle = new THREE.PointLight(0x8f9fe6, 2.6, 14, 2);
-  farCandle.position.set(1.4, 3.2, -1.6);
+  const farCandle = new THREE.PointLight(0x9fb0ff, 4.0, 22, 1);
+  farCandle.position.set(1.4, 3.4, -1.6);
   farCandle.castShadow = true;
   farCandle.shadow.mapSize.set(1024, 1024);
   farCandle.shadow.bias = -0.003;
   scene.add(farCandle);
 
-  const rim = new THREE.DirectionalLight(0x6f7bcf, 0.7);
+  const rim = new THREE.DirectionalLight(0x8a94d6, 1.1);
   rim.position.set(3, 4, -4);
   scene.add(rim);
 
-  const fill = new THREE.HemisphereLight(0x463c5e, 0x14101a, 0.6);
+  const frontFill = new THREE.DirectionalLight(0xd9c9a8, 0.8);
+  frontFill.position.set(-3, 5, 5);
+  scene.add(frontFill);
+
+  const fill = new THREE.HemisphereLight(0x6c5f8a, 0x2a2236, 1.0);
   scene.add(fill);
 
   const worldGroup = new THREE.Group();
@@ -105,7 +109,7 @@ export function createScene3D(container: HTMLElement): Scene3D {
   const pieceGroup = new THREE.Group();
   worldGroup.add(pieceGroup);
 
-  const darkStone = new THREE.MeshStandardMaterial({ color: 0x2a232b, roughness: 0.75, metalness: 0.05 });
+  const darkStone = new THREE.MeshStandardMaterial({ color: 0x3c333f, roughness: 0.75, metalness: 0.05 });
   const paleStone = new THREE.MeshStandardMaterial({ color: 0x8d7a5c, roughness: 0.7, metalness: 0.05 });
   const goldTrim = new THREE.MeshStandardMaterial({
     color: 0xc9a227,
@@ -176,8 +180,8 @@ export function createScene3D(container: HTMLElement): Scene3D {
 }
 
 export function tickAmbient(scene3d: Scene3D, elapsed: number): void {
-  scene3d.candle.intensity = 3.0 + Math.sin(elapsed * 8) * 0.15 + Math.sin(elapsed * 23) * 0.08;
-  scene3d.farCandle.intensity = 2.6 + Math.sin(elapsed * 7 + 1.7) * 0.12 + Math.sin(elapsed * 19) * 0.06;
+  scene3d.candle.intensity = 4.2 + Math.sin(elapsed * 8) * 0.15 + Math.sin(elapsed * 23) * 0.08;
+  scene3d.farCandle.intensity = 4.0 + Math.sin(elapsed * 7 + 1.7) * 0.12 + Math.sin(elapsed * 19) * 0.06;
 
   const positions = scene3d.emberGeo.attributes.position.array as Float32Array;
   for (let i = 0; i < scene3d.emberCount; i++) {

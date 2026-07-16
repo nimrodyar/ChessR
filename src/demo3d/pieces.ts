@@ -11,11 +11,11 @@ function stoneMaterial(color: DemoColor): THREE.MeshStandardMaterial {
   return color === 'white'
     ? new THREE.MeshStandardMaterial({ color: 0xd8cdb4, roughness: 0.75, metalness: 0.05 })
     : new THREE.MeshStandardMaterial({
-        color: 0x3d3248,
-        roughness: 0.5,
+        color: 0x5b4d70,
+        roughness: 0.45,
         metalness: 0.15,
-        emissive: 0x1a1024,
-        emissiveIntensity: 0.35,
+        emissive: 0x2a1c3a,
+        emissiveIntensity: 0.55,
       });
 }
 
