@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital@0;1&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #050304;
+  overflow: hidden;
+  font-family: 'EB Garamond', serif;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+#app canvas {
+  display: block;
+}
+
+.demo-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 28px;
+}
+
+.demo-title {
+  pointer-events: none;
+}
+
+.demo-title h1 {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: 4px;
+  color: #d8b463;
+  text-shadow: 0 0 18px rgba(216, 180, 99, 0.45), 0 2px 2px #000;
+  margin: 0;
+}
+
+.demo-title p {
+  color: #8a6f52;
+  margin: 6px 0 0;
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.demo-controls {
+  pointer-events: auto;
+  display: flex;
+  gap: 12px;
+  align-self: flex-start;
+}
+
+.demo-button {
+  font-family: 'Cinzel', serif;
+  background: linear-gradient(180deg, #241a12, #120c08);
+  border: 1px solid #6b4f22;
+  color: #d8b463;
+  padding: 10px 16px;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.6), inset 0 0 8px rgba(201, 162, 39, 0.08);
+  transition: box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.demo-button:hover {
+  color: #ffcf6b;
+  box-shadow: 0 0 16px rgba(216, 180, 99, 0.5), inset 0 0 10px rgba(201, 162, 39, 0.2);
+}
+
+.demo-hint {
+  pointer-events: none;
+  color: #6b5a45;
+  font-size: 12px;
+  letter-spacing: 1px;
+  align-self: center;
+}
