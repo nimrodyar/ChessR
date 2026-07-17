@@ -113,10 +113,10 @@ export class PieceView3D {
         const world = boardToWorld(piece.pos.x, piece.pos.y);
         entry.group.position.set(world.x, 0, world.z);
         entry.group.scale.set(1, 1, 1);
-        // Black pieces face the opposite way from white (they attack "down" the board rather
-        // than "up" it), so mirror asymmetric silhouettes like the knight's head 180° — otherwise
-        // both colors' knights face the same absolute direction and black's looks backwards.
-        entry.group.rotation.set(0, entry.color === 'black' ? Math.PI : 0, 0);
+        // Asymmetric silhouettes (the knight's head) must face INTO the board, toward the enemy:
+        // the model is built facing +z (the near edge), so white — whose army attacks toward -z —
+        // is the side that needs the 180° turn, and black keeps the model's native facing.
+        entry.group.rotation.set(0, entry.color === 'white' ? Math.PI : 0, 0);
         entry.group.visible = true;
       }
       if (!sameMutations(entry.mutationIds, piece.mutations)) {
