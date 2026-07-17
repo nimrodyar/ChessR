@@ -126,6 +126,23 @@ export function buildPiece(type: DemoPieceType, color: DemoColor): PieceHandles 
       ear.castShadow = true;
       group.add(ear);
 
+      // Solid-gold mane crest running down the back of the neck — same royal-gold
+      // treatment as the king's crown and queen's moon.
+      const crestMat = goldMaterial();
+      const crest: [number, number][] = [
+        [1.0, -0.03],
+        [0.92, -0.1],
+        [0.83, -0.16],
+        [0.73, -0.21],
+      ];
+      for (const [cy, cz] of crest) {
+        const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.16, 6), crestMat);
+        tuft.position.set(0, cy, cz);
+        tuft.rotation.x = 0.5; // sweep backward with the neck line
+        tuft.castShadow = true;
+        group.add(tuft);
+      }
+
       const mane = goldRing(0.15, 0.02, 0.6);
       group.add(mane);
       glowParts.push(mane);
@@ -134,6 +151,16 @@ export function buildPiece(type: DemoPieceType, color: DemoColor): PieceHandles 
     case 'bishop': {
       group.add(robe(color, 0.11, 0.25, 0.75, 0.5));
       group.add(capirote(color, 1.05, 0.7, 0.16));
+      // Solid-gold cross atop the hood — the bishop's counterpart to crown and moon.
+      const crossMat = goldMaterial();
+      const crossPost = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.24, 0.04), crossMat);
+      crossPost.position.y = 1.5;
+      crossPost.castShadow = true;
+      group.add(crossPost);
+      const crossArm = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.04, 0.04), crossMat);
+      crossArm.position.y = 1.54;
+      crossArm.castShadow = true;
+      group.add(crossArm);
       const ring = goldRing(0.18, 0.022, 0.72);
       group.add(ring);
       glowParts.push(ring);

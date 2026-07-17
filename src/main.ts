@@ -5,7 +5,7 @@ import { isCheckmate, isInCheck, isStalemate, legalMoves, type Move } from './co
 import { activateAbility, applyMove, canActivate, tickFrozenStatuses, type AnimationStep } from './core/combat';
 import { chooseAiMove, rateMoveQuality } from './core/ai';
 import { pickPerkOptions } from './core/perks';
-import { createScene3D, resetView, tickAmbient } from './render/three/scene3d';
+import { boardToWorld, burstParticlesAt, createScene3D, resetView, shakeWorld, tickAmbient } from './render/three/scene3d';
 import { BoardView3D } from './render/three/boardView3d';
 import { PieceView3D } from './render/three/pieceView3d';
 import { playAnimations } from './render/three/effects3d';
@@ -393,6 +393,30 @@ async function main(): Promise<void> {
     await advanceTurnAfter(humanColor);
   }
 
+  /** Golden fireworks over the board plus a big VICTORY banner — savored before the reward screen. */
+  async function celebrateVictory(): Promise<void> {
+    const banner = document.createElement('div');
+    banner.className = 'victory-banner';
+    banner.innerHTML = '<span>VICTORY</span><small>Checkmate!</small>';
+    appEl!.appendChild(banner);
+
+    shakeWorld(scene3d, 0.06, 0.5);
+    const burstColors = [0xffcf6b, 0xffa554, 0xfff2c8];
+    for (let i = 0; i < 9; i++) {
+      const world = boardToWorld(Math.floor(Math.random() * 8), Math.floor(Math.random() * 8));
+      burstParticlesAt(
+        scene3d,
+        new THREE.Vector3(world.x, 0.6 + Math.random() * 1.2, world.z),
+        burstColors[i % burstColors.length],
+      );
+      await new Promise((r) => setTimeout(r, 220));
+    }
+    await new Promise((r) => setTimeout(r, 600));
+    banner.classList.add('victory-banner--out');
+    await new Promise((r) => setTimeout(r, 400));
+    banner.remove();
+  }
+
   async function onBattleEnd(winner: Color): Promise<void> {
     gameOver = true;
     inputLocked = true;
@@ -400,6 +424,7 @@ async function main(): Promise<void> {
 
     if (winner === humanColor) {
       hud.setStatus('Checkmate — Victory!');
+      await celebrateVictory();
       // Checkmate is the finest move in the book — the parting draw leans generous.
       const options = pickPerkOptions(board, ownedMutations, { color: humanColor, quality: 0.9 });
       rewardScreen.show('Checkmate! Choose a parting perk:', options, (id) => {
