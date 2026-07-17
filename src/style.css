@@ -465,26 +465,3 @@ body {
   background: rgba(216, 180, 99, 0.3);
   color: #ffcf6b;
 }
-
-/* Wide-gamut / HDR displays: push the signature golds beyond the sRGB ceiling.
-   Screens that can't render these simply keep the sRGB values above. */
-@media (color-gamut: p3) {
-  .demo-title h1 {
-    color: color(display-p3 0.92 0.74 0.35);
-    text-shadow: 0 0 18px color(display-p3 0.95 0.78 0.4 / 0.55), 0 2px 2px #000;
-  }
-
-  .hud-status {
-    color: color(display-p3 0.92 0.74 0.35);
-  }
-
-  .reward-card strong,
-  .piece-info-ability-name {
-    color: color(display-p3 1 0.83 0.4);
-  }
-
-  .victory-banner span {
-    color: color(display-p3 1 0.87 0.45);
-    text-shadow: 0 0 30px color(display-p3 1 0.83 0.4 / 0.8), 0 0 80px color(display-p3 1 0.68 0.3 / 0.55), 0 3px 3px #000;
-  }
-}

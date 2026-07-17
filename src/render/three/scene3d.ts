@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { DisplayP3ColorSpace, DisplayP3ColorSpaceImpl } from 'three/examples/jsm/math/ColorSpaces.js';
 import gsap from 'gsap';
 import { BOARD_SIZE } from '../../core/board';
 
@@ -62,34 +61,6 @@ export function createScene3D(container: HTMLElement): Scene3D {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.7;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-
-  // HDR / wide-gamut enhancement, all best-effort with sRGB fallback:
-  // - On Display-P3 screens, render in the wider gamut so the golds and candle-fire
-  //   reach saturation sRGB physically can't express.
-  // - On true HDR screens (dynamic-range: high), opt the canvas into extended dynamic
-  //   range where the browser supports it, letting highlights exceed SDR-white nits,
-  //   and push exposure so flames and gold trim actually bloom brighter.
-  const wideGamut = window.matchMedia?.('(color-gamut: p3)')?.matches ?? false;
-  const highDynamicRange = window.matchMedia?.('(dynamic-range: high)')?.matches ?? false;
-  if (wideGamut) {
-    try {
-      THREE.ColorManagement.define({ [DisplayP3ColorSpace]: DisplayP3ColorSpaceImpl });
-      renderer.outputColorSpace = DisplayP3ColorSpace;
-    } catch {
-      // Any mismatch in an exotic browser must never break the game — stay on sRGB.
-    }
-  }
-  if (highDynamicRange) {
-    const hdrCanvas = renderer.domElement as HTMLCanvasElement & {
-      configureHighDynamicRange?: (options: { mode: 'default' | 'extended' }) => void;
-    };
-    try {
-      hdrCanvas.configureHighDynamicRange?.({ mode: 'extended' });
-    } catch {
-      // Older browsers reject the call — SDR output is the graceful fallback.
-    }
-    renderer.toneMappingExposure = 2.0;
-  }
   container.appendChild(renderer.domElement);
 
   const controls = new OrbitControls(camera, renderer.domElement);
