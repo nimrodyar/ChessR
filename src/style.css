@@ -219,6 +219,9 @@ body {
   gap: 14px;
   flex-wrap: wrap;
   justify-content: center;
+  /* Cards in the same row always match height, so a short description never
+   * leaves one card visibly stubbier than its neighbors. */
+  align-items: stretch;
 }
 
 .reward-card {
@@ -235,7 +238,7 @@ body {
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   text-align: left;
   white-space: normal;
   overflow-wrap: break-word;
@@ -261,17 +264,39 @@ body {
   color: #c2a97f;
 }
 
-
-.reward-card-header {
+/* Card structure, top to bottom: symbol row (icon + rarity), title, use chip, description. */
+.reward-card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
 }
 
-.reward-card-header strong {
-  flex: 1;
+.reward-card-symbol {
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(216, 180, 99, 0.3));
+}
+
+.reward-card-rarity {
+  align-self: flex-start;
+}
+
+.reward-card-title {
+  font-family: 'Cinzel', serif;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  line-height: 1.3;
+  color: #ffcf6b;
+}
+
+.reward-card-use {
+  display: flex;
+}
+
+.reward-card-desc {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #c2a97f;
 }
 
 .reward-card-rarity {
