@@ -261,14 +261,6 @@ body {
   color: #c2a97f;
 }
 
-/* Big identifying symbol so each perk reads at a glance */
-.reward-card-icon {
-  font-size: 34px;
-  line-height: 1;
-  text-align: center;
-  align-self: center;
-  filter: drop-shadow(0 0 8px rgba(216, 180, 99, 0.35));
-}
 
 .reward-card-header {
   display: flex;
@@ -278,12 +270,8 @@ body {
   gap: 4px;
 }
 
-.reward-card-class {
-  font-family: 'Cinzel', serif;
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: #8a6f52;
+.reward-card-header strong {
+  flex: 1;
 }
 
 .reward-card-rarity {
@@ -293,13 +281,6 @@ body {
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 2px;
-}
-
-.reward-card-piece {
-  font-style: italic;
-  font-size: 11px;
-  text-transform: capitalize;
-  color: #6b5a44 !important;
 }
 
 .choice-card {

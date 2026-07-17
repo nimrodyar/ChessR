@@ -65,6 +65,13 @@ describe('pickPerkOptions', () => {
     expect(picks.every((p) => p.trigger !== 'activated')).toBe(true);
   });
 
+  it('restricts the draw to the capturing piece type', () => {
+    const board = boardWithAllTypes('white');
+    const picks = pickPerkOptions(board, new Set(), { count: 10, pieceType: 'rook' });
+    expect(picks.length).toBeGreaterThan(0);
+    expect(picks.every((p) => p.pieceType === 'rook')).toBe(true);
+  });
+
   it('never offers a perk that is already owned', () => {
     const board = boardWithAllTypes('white');
     const first = pickPerkOptions(board, new Set(), { count: 20 });

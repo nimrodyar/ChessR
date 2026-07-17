@@ -5,7 +5,6 @@ export type DemoColor = 'white' | 'black';
 
 const GOLD = 0xc9a227;
 const GOLD_EMISSIVE = 0x3a2500;
-const HALO_COLOR = 0xffb84d;
 
 function stoneMaterial(color: DemoColor): THREE.MeshStandardMaterial {
   return color === 'white'
@@ -26,18 +25,6 @@ function goldMaterial(): THREE.MeshStandardMaterial {
     metalness: 0.9,
     emissive: GOLD_EMISSIVE,
     emissiveIntensity: 0.6,
-  });
-}
-
-function haloMaterial(): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
-    color: HALO_COLOR,
-    emissive: HALO_COLOR,
-    emissiveIntensity: 1.4,
-    roughness: 0.4,
-    metalness: 0.2,
-    transparent: true,
-    opacity: 0.9,
   });
 }
 
@@ -177,12 +164,14 @@ export function buildPiece(type: DemoPieceType, color: DemoColor): PieceHandles 
       head.position.y = 1.14;
       head.castShadow = true;
       group.add(head);
-      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.02, 8, 28), haloMaterial());
-      halo.position.y = 1.32;
-      halo.rotation.x = Math.PI / 2.4;
-      group.add(halo);
-      glowParts.push(halo);
-      return { group, halo, glowParts };
+      // A golden crescent moon crowns the queen — an open torus arc, tips pointing skyward.
+      const moon = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.045, 10, 28, Math.PI * 1.3), goldMaterial());
+      moon.position.y = 1.44;
+      moon.rotation.z = Math.PI * 0.85; // rotate the arc's opening upward so it reads as a crescent
+      moon.castShadow = true;
+      group.add(moon);
+      glowParts.push(moon);
+      break;
     }
     case 'king': {
       group.add(robe(color, 0.11, 0.27, 1.05, 0.65));
@@ -193,13 +182,21 @@ export function buildPiece(type: DemoPieceType, color: DemoColor): PieceHandles 
       head.position.y = 1.26;
       head.castShadow = true;
       group.add(head);
-      group.add(thornCrown(1.4, 7, 0.12, 0.14));
-      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 8, 32), haloMaterial());
-      halo.position.y = 1.5;
-      halo.rotation.x = Math.PI / 2.4;
-      group.add(halo);
-      glowParts.push(halo);
-      return { group, halo, glowParts };
+      // A large, unmistakable royal crown: solid gold band with tall vertical spikes.
+      const crownBand = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.11, 16), goldMaterial());
+      crownBand.position.y = 1.42;
+      crownBand.castShadow = true;
+      group.add(crownBand);
+      glowParts.push(crownBand);
+      const spikeMat = goldMaterial();
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.26, 6), spikeMat);
+        spike.position.set(Math.cos(angle) * 0.17, 1.58, Math.sin(angle) * 0.17);
+        spike.castShadow = true;
+        group.add(spike);
+      }
+      break;
     }
   }
 

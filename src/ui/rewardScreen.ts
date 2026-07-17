@@ -35,13 +35,10 @@ export class RewardScreen {
         card.className = `reward-card reward-card--${ability.rarity}`;
         card.innerHTML = `
           <div class="reward-card-header">
-            <span class="reward-card-class">${ability.className}</span>
+            <strong>${ability.icon} ${ability.name}</strong>
             <span class="reward-card-rarity reward-card-rarity--${ability.rarity}">${ability.rarity}</span>
           </div>
-          <div class="reward-card-icon">${ability.icon}</div>
-          <strong>${ability.name}</strong>
           <div class="reward-card-meta">
-            <span class="reward-card-piece">${ability.pieceType}</span>
             <span class="trigger-chip trigger-chip--${ability.trigger}">${TRIGGER_LABELS[ability.trigger]}</span>
           </div>
           <span>${ability.description}</span>
