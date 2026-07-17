@@ -17,6 +17,7 @@ export interface AbilityInfo {
   description: string;
   rarity: AbilityRarity;
   trigger: AbilityTrigger;
+  icon: string;
 }
 
 export interface SelectedPieceInfo {
@@ -30,18 +31,19 @@ export interface PieceTooltipInfo {
   abilities: AbilityInfo[];
 }
 
-/** Plain-language labels for when each perk actually fires — shown as chips everywhere a perk is described. */
+/** Plain-language labels (with a scannable symbol) for when each perk actually fires —
+ * shown as chips everywhere a perk is described. */
 export const TRIGGER_LABELS: Record<AbilityTrigger, string> = {
-  onDeath: 'when slain',
-  onCapture: 'on kill',
-  activated: 'once per battle',
+  onDeath: '⚰ when slain',
+  onCapture: '⚔ on kill',
+  activated: '✦ once per battle',
 };
 
 export function abilityEntryHtml(a: AbilityInfo): string {
   return `
     <div class="piece-info-ability piece-info-ability--${a.rarity}">
       <div class="piece-info-ability-head">
-        <span class="piece-info-ability-name">${a.name}</span>
+        <span class="piece-info-ability-name">${a.icon} ${a.name}</span>
         <span class="trigger-chip trigger-chip--${a.trigger}">${TRIGGER_LABELS[a.trigger]}</span>
       </div>
       <div class="piece-info-ability-desc">${a.description}</div>

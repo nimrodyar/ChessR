@@ -132,7 +132,7 @@ async function main(): Promise<void> {
     if (options.length === 0) return null;
     const perk = options[0];
     grantMutation(perk.id, aiColor());
-    return `Enemy ${perk.pieceType}s gain ${perk.name} (${perk.rarity})!`;
+    return `Enemy ${perk.pieceType}s gain ${perk.icon} ${perk.name} (${perk.rarity})!`;
   }
 
   function choosePromotion(): Promise<PieceType> {
@@ -148,10 +148,10 @@ async function main(): Promise<void> {
     hud.setSelectedPieceInfo(null);
   }
 
-  function abilityInfos(piece: Piece): { name: string; description: string; rarity: AbilityRarity; trigger: AbilityTrigger }[] {
+  function abilityInfos(piece: Piece): { name: string; description: string; rarity: AbilityRarity; trigger: AbilityTrigger; icon: string }[] {
     return piece.mutations.map((mutationId) => {
       const def = ABILITIES[mutationId];
-      return { name: def.name, description: def.description, rarity: def.rarity, trigger: def.trigger };
+      return { name: def.name, description: def.description, rarity: def.rarity, trigger: def.trigger, icon: def.icon };
     });
   }
 
@@ -175,7 +175,7 @@ async function main(): Promise<void> {
         if (def.trigger === 'activated' && canActivate(piece, mutationId)) {
           buttons.push({
             id: `${piece.id}:${mutationId}`,
-            label: `${def.name} (${piece.type})`,
+            label: `${def.icon} ${def.name} (${piece.type})`,
             onClick: () => void activateAbilityOn(piece, mutationId),
           });
         }

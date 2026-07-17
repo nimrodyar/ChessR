@@ -5,6 +5,7 @@ import type { MutationId } from '../core/pieces';
 export const ABILITIES: Record<MutationId, AbilityDef> = {
   pawnLandmine: {
     id: 'pawnLandmine',
+    icon: '💥',
     name: "Martyr's Charge",
     description: 'When this pawn is slain, the square it died on detonates into a bottomless pit. Any piece that later steps there falls in and is lost.',
     trigger: 'onDeath',
@@ -15,6 +16,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   pawnZealot: {
     id: 'pawnZealot',
+    icon: '🔆',
     name: "Zealot's Last Rites",
     description: 'When this pawn is slain, a cross of holy fire shatters the four squares touching it (up, down, left, right) into pits.',
     trigger: 'onDeath',
@@ -36,6 +38,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   knightCharge: {
     id: 'knightCharge',
+    icon: '🐎',
     name: 'Trampling Charge',
     description: 'When this knight kills, the corner square it leapt around is crushed into a pit.',
     trigger: 'onCapture',
@@ -53,6 +56,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   knightShadowStep: {
     id: 'knightShadowStep',
+    icon: '🥷',
     name: 'Shadow Step',
     description: 'When this knight kills, the square it launched from crumbles into a pit behind it.',
     trigger: 'onCapture',
@@ -66,6 +70,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   bishopArsonist: {
     id: 'bishopArsonist',
+    icon: '🔥',
     name: 'Trail of Cinders',
     description: 'When this bishop kills, its momentum burns the next square along the same diagonal (just past the victim) into a pit.',
     trigger: 'onCapture',
@@ -83,6 +88,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   bishopWard: {
     id: 'bishopWard',
+    icon: '✨',
     name: 'Sanctify Ground',
     description: 'Once per battle (press its button below): mends one pit next to this bishop back into solid, walkable ground.',
     trigger: 'activated',
@@ -104,6 +110,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   rookDemolisher: {
     id: 'rookDemolisher',
+    icon: '🔨',
     name: 'Battering Ram',
     description: "When this rook kills, the blow carries through: the square directly behind the victim (continuing the rook's line) is smashed into a pit.",
     trigger: 'onCapture',
@@ -121,6 +128,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   rookSiegeEngine: {
     id: 'rookSiegeEngine',
+    icon: '💣',
     name: 'Siege Engine',
     description: "When this rook kills, the destruction rolls on: the two squares behind the victim along the rook's line are smashed into pits.",
     trigger: 'onCapture',
@@ -141,6 +149,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   queenEarthquake: {
     id: 'queenEarthquake',
+    icon: '🌋',
     name: 'Earthquake',
     description: 'Once per battle (press its button below): all 8 squares around the queen collapse into pits. Any piece standing on them, friend or foe, falls in.',
     trigger: 'activated',
@@ -161,6 +170,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   queenCataclysm: {
     id: 'queenCataclysm',
+    icon: '☄️',
     name: 'Cataclysm',
     description: 'Once per battle (press its button below): every square within 2 of the queen (a 5\u00d75 blast, 24 squares) collapses into pits. Devastating and utterly indiscriminate.',
     trigger: 'activated',
@@ -181,6 +191,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   kingBunker: {
     id: 'kingBunker',
+    icon: '🛡️',
     name: 'Consecrated Throne',
     description: "Always active: the square under this king can never be destroyed \u2014 no blast, ally or enemy, can turn it into a pit.",
     trigger: 'onDeath',
@@ -195,6 +206,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
 
   pawnBloodFrenzy: {
     id: 'pawnBloodFrenzy',
+    icon: '🩸',
     name: 'Blood Frenzy',
     description:
       'When this pawn kills, the square it struck from shatters into a pit — but the frenzy leaves this pawn frozen (unable to move) for one turn.',
@@ -214,6 +226,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   rookShackle: {
     id: 'rookShackle',
+    icon: '⛓️',
     name: 'Chains of the Damned',
     description:
       'When this rook kills, the nearest enemy beside the victim is bound in chains (frozen, unable to move, for 1 turn) — but the recoil freezes this rook for a turn too.',
@@ -243,6 +256,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
   },
   kingIronVigil: {
     id: 'kingIronVigil',
+    icon: '💠',
     name: 'Iron Vigil',
     description:
       'Once per battle (press its button below): wardstone magic mends every pit next to the king back to solid ground — but the toll freezes the king (unable to move) for one turn.',

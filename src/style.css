@@ -150,15 +150,15 @@ body {
 
 .piece-info-ability-name {
   font-family: 'Cinzel', serif;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.5px;
   color: #ffcf6b;
 }
 
 .piece-info-ability-desc {
-  font-size: 11px;
-  color: #a8916e;
-  line-height: 1.35;
+  font-size: 12.5px;
+  color: #bfa77f;
+  line-height: 1.45;
 }
 
 .piece-info-ability--uncommon {
@@ -193,7 +193,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 18px;
-  max-width: min(640px, 92vw);
+  max-width: min(780px, 94vw);
   max-height: 85vh;
   overflow-y: auto;
 }
@@ -229,8 +229,8 @@ body {
   /* Fixed-basis flex item that never shrinks: shrinking is what squeezed card text into a
    * vertical column of characters when several cards shared a row. Cards wrap to a new
    * row instead (.reward-cards has flex-wrap: wrap). */
-  flex: 0 0 160px;
-  width: 160px;
+  flex: 0 0 200px;
+  width: 200px;
   color: #d8b463;
   cursor: pointer;
   display: flex;
@@ -250,14 +250,24 @@ body {
 
 .reward-card strong {
   font-family: 'Cinzel', serif;
-  font-size: 13px;
+  font-size: 15px;
   letter-spacing: 0.5px;
   color: #ffcf6b;
 }
 
 .reward-card span {
-  font-size: 13px;
-  color: #a8916e;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #c2a97f;
+}
+
+/* Big identifying symbol so each perk reads at a glance */
+.reward-card-icon {
+  font-size: 34px;
+  line-height: 1;
+  text-align: center;
+  align-self: center;
+  filter: drop-shadow(0 0 8px rgba(216, 180, 99, 0.35));
 }
 
 .reward-card-header {
@@ -300,12 +310,17 @@ body {
 /* When a perk fires — shown wherever a perk is described */
 .trigger-chip {
   font-family: 'Cinzel', serif;
-  font-size: 9px;
-  letter-spacing: 1px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: 2px;
-  white-space: nowrap;
+  /* Must never bleed past its card: wrap inside the chip rather than overflow the border. */
+  white-space: normal;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .trigger-chip--onDeath {
