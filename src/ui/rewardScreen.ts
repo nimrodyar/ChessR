@@ -38,6 +38,7 @@ export class RewardScreen {
             <span class="reward-card-class">${ability.className}</span>
             <span class="reward-card-rarity reward-card-rarity--${ability.rarity}">${ability.rarity}</span>
           </div>
+          <div class="reward-card-icon">${ability.icon}</div>
           <strong>${ability.name}</strong>
           <div class="reward-card-meta">
             <span class="reward-card-piece">${ability.pieceType}</span>

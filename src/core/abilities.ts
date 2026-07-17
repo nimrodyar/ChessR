@@ -26,5 +26,7 @@ export interface AbilityDef {
   rarity: AbilityRarity;
   /** D&D-flavored class this perk draws from — purely cosmetic, shown on the reward card. */
   className: string;
+  /** Single symbol identifying this perk at a glance — shown on cards, tooltips, panels and buttons. */
+  icon: string;
   effect: (ctx: AbilityContext) => BoardMutation[];
 }
