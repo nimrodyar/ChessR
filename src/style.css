@@ -490,3 +490,46 @@ body {
   background: rgba(216, 180, 99, 0.3);
   color: #ffcf6b;
 }
+
+/* Options menu */
+.options-panel {
+  min-width: min(420px, 92vw);
+  align-items: stretch;
+}
+
+.options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.options-label {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: #d8b463;
+}
+
+.options-choices {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.options-toggle {
+  min-width: 64px;
+}
+
+.options-active {
+  border-color: #d8b463;
+  color: #ffcf6b;
+  box-shadow: 0 0 12px rgba(216, 180, 99, 0.45), inset 0 0 8px rgba(201, 162, 39, 0.2);
+}
+
+.options-slider {
+  flex: 1;
+  max-width: 220px;
+  accent-color: #c9a227;
+}

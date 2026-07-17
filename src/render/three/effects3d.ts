@@ -101,6 +101,30 @@ function playStep(step: AnimationStep, pieceView: PieceView3D, boardView: BoardV
         gsap.delayedCall(0.35, resolve);
         return;
       }
+      case 'crackTile': {
+        if (!step.pos) return resolve();
+        const tile = boardView.getTileMesh(step.pos);
+        shakeWorld(scene3d, 0.04, 0.25);
+        burstParticlesAt(scene3d, new THREE.Vector3(tile.position.x, 0.05, tile.position.z), 0xaa6633);
+        gsap
+          .timeline({
+            onComplete: () => {
+              boardView.drawTile(step.pos!.x, step.pos!.y, 'cracked');
+              resolve();
+            },
+          })
+          .to(tile.position, { y: -0.16, duration: 0.12, ease: 'power2.in' })
+          .to(tile.position, { y: -0.14, duration: 0.1, ease: 'power2.out' });
+        return;
+      }
+      case 'revive': {
+        if (!step.pos) return resolve();
+        const world = boardToWorld(step.pos.x, step.pos.y);
+        burstParticlesAt(scene3d, new THREE.Vector3(world.x, 0.4, world.z), 0xfff2c8);
+        burstParticlesAt(scene3d, new THREE.Vector3(world.x, 0.1, world.z), 0xffcf6b);
+        gsap.delayedCall(0.5, resolve); // the piece mesh itself appears on the post-turn sync
+        return;
+      }
       case 'destroyTile': {
         if (!step.pos) return resolve();
         const tile = boardView.getTileMesh(step.pos);

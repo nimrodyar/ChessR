@@ -8,11 +8,12 @@ function emptyBoard(): Board {
   return {
     tiles: Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => ({ state: 'normal' as const }))),
     pieces: [],
+    fallen: [],
   };
 }
 
 describe('pawnLandmine', () => {
-  it('turns the tile a mutated pawn died on into a hole', () => {
+  it('cracks the tile a mutated pawn died on', () => {
     const board = emptyBoard();
     const attacker = makePiece('rook', 'black', { x: 0, y: 5 });
     const pawn = makePiece('pawn', 'white', { x: 0, y: 4 });
@@ -21,13 +22,13 @@ describe('pawnLandmine', () => {
 
     applyMove(board, { from: { x: 0, y: 5 }, to: { x: 0, y: 4 }, isCapture: true, capturedId: pawn.id });
 
-    expect(board.tiles[4][0].state).toBe('hole');
+    expect(board.tiles[4][0].state).toBe('cracked');
     expect(board.pieces.find((p) => p.id === pawn.id)).toBeUndefined();
   });
 });
 
 describe('knightCharge', () => {
-  it('destroys the L-corner tile when the knight captures', () => {
+  it('cracks the L-corner tile when the knight captures', () => {
     const board = emptyBoard();
     const knight = makePiece('knight', 'white', { x: 3, y: 3 });
     knight.mutations.push('knightCharge');
@@ -37,12 +38,12 @@ describe('knightCharge', () => {
     applyMove(board, { from: { x: 3, y: 3 }, to: { x: 4, y: 1 }, isCapture: true, capturedId: enemy.id });
 
     // long axis of travel is y (dy=2), so the corner is (from.x, to.y)
-    expect(board.tiles[1][3].state).toBe('hole');
+    expect(board.tiles[1][3].state).toBe('cracked');
   });
 });
 
 describe('rookDemolisher', () => {
-  it('destroys the tile just beyond a captured piece', () => {
+  it('cracks the tile just beyond a captured piece', () => {
     const board = emptyBoard();
     const rook = makePiece('rook', 'white', { x: 0, y: 0 });
     rook.mutations.push('rookDemolisher');
@@ -51,17 +52,18 @@ describe('rookDemolisher', () => {
 
     applyMove(board, { from: { x: 0, y: 0 }, to: { x: 3, y: 0 }, isCapture: true, capturedId: enemy.id });
 
-    expect(board.tiles[0][4].state).toBe('hole');
+    expect(board.tiles[0][4].state).toBe('cracked');
   });
 });
 
 describe('queenEarthquake', () => {
-  it('destroys the 8 surrounding tiles once, dropping any piece caught in the blast, then cannot be reused', () => {
+  it('cracks the 8 surrounding tiles once, collapsing any already-cracked tile under a piece, then cannot be reused', () => {
     const board = emptyBoard();
     const queen = makePiece('queen', 'white', { x: 4, y: 4 });
     queen.mutations.push('queenEarthquake');
     const bystander = makePiece('pawn', 'black', { x: 4, y: 3 });
     board.pieces.push(queen, bystander);
+    board.tiles[3][4].state = 'cracked'; // the bystander already stands on cracked ground
 
     expect(canActivate(queen, 'queenEarthquake')).toBe(true);
     const result = activateAbility(board, queen, 'queenEarthquake');
@@ -72,7 +74,8 @@ describe('queenEarthquake', () => {
       [-1, 1], [0, 1], [1, 1],
     ];
     for (const [dx, dy] of neighborOffsets) {
-      expect(board.tiles[4 + dy][4 + dx].state).toBe('hole');
+      const expected = dx === 0 && dy === -1 ? 'hole' : 'cracked'; // pre-cracked tile collapses, rest crack
+      expect(board.tiles[4 + dy][4 + dx].state).toBe(expected);
     }
     expect(board.tiles[4][4].state).toBe('normal'); // queen's own tile is spared
     expect(board.pieces.find((p) => p.id === bystander.id)).toBeUndefined();
@@ -101,12 +104,12 @@ describe('kingBunker', () => {
 });
 
 describe('bishopWard', () => {
-  it('restores an adjacent hole to solid ground, once per battle', () => {
+  it('repairs an adjacent cracked tile, once per battle', () => {
     const board = emptyBoard();
     const bishop = makePiece('bishop', 'white', { x: 3, y: 3 });
     bishop.mutations.push('bishopWard');
     board.pieces.push(bishop);
-    board.tiles[3][4].state = 'hole';
+    board.tiles[3][4].state = 'cracked';
 
     expect(canActivate(bishop, 'bishopWard')).toBe(true);
     const result = activateAbility(board, bishop, 'bishopWard');
@@ -114,6 +117,26 @@ describe('bishopWard', () => {
     expect(board.tiles[3][4].state).toBe('normal');
     expect(result.animations.some((a) => a.type === 'restoreTile')).toBe(true);
     expect(canActivate(bishop, 'bishopWard')).toBe(false);
+  });
+
+  it('repairs a pit only after it has claimed a piece', () => {
+    const board = emptyBoard();
+    const bishop = makePiece('bishop', 'white', { x: 3, y: 3 });
+    bishop.mutations.push('bishopWard');
+    board.pieces.push(bishop);
+    board.tiles[3][4].state = 'hole'; // virgin pit — never swallowed anyone
+
+    activateAbility(board, bishop, 'bishopWard');
+    expect(board.tiles[3][4].state).toBe('hole'); // refused: the abyss has not been fed
+
+    const bishop2 = makePiece('bishop', 'white', { x: 3, y: 5 });
+    bishop2.mutations.push('bishopWard');
+    board.pieces.push(bishop2);
+    board.tiles[4][4].state = 'hole';
+    board.tiles[4][4].claimedPiece = true; // this pit killed something
+
+    activateAbility(board, bishop2, 'bishopWard');
+    expect(board.tiles[4][4].state).toBe('normal');
   });
 });
 
@@ -175,7 +198,7 @@ describe('frozen status', () => {
 });
 
 describe('pawnBloodFrenzy', () => {
-  it('destroys the origin tile and freezes the pawn on capture', () => {
+  it('cracks the origin tile and freezes the pawn on capture', () => {
     const board = emptyBoard();
     const pawn = makePiece('pawn', 'white', { x: 3, y: 3 });
     pawn.mutations.push('pawnBloodFrenzy');
@@ -184,7 +207,7 @@ describe('pawnBloodFrenzy', () => {
 
     applyMove(board, { from: { x: 3, y: 3 }, to: { x: 4, y: 2 }, isCapture: true, capturedId: enemy.id });
 
-    expect(board.tiles[3][3].state).toBe('hole');
+    expect(board.tiles[3][3].state).toBe('cracked');
     expect(pawn.frozenTurns).toBe(2);
   });
 });
@@ -206,13 +229,14 @@ describe('rookShackle', () => {
 });
 
 describe('kingIronVigil', () => {
-  it('mends every adjacent hole and freezes the king, once per battle', () => {
+  it('mends every adjacent damaged tile and freezes the king, once per battle', () => {
     const board = emptyBoard();
     const king = makePiece('king', 'white', { x: 4, y: 4 });
     king.mutations.push('kingIronVigil');
     board.pieces.push(king);
-    board.tiles[3][4].state = 'hole';
+    board.tiles[3][4].state = 'cracked';
     board.tiles[4][3].state = 'hole';
+    board.tiles[4][3].claimedPiece = true;
 
     expect(canActivate(king, 'kingIronVigil')).toBe(true);
     activateAbility(board, king, 'kingIronVigil');
@@ -221,5 +245,45 @@ describe('kingIronVigil', () => {
     expect(board.tiles[4][3].state).toBe('normal');
     expect(king.frozenTurns).toBe(2);
     expect(canActivate(king, 'kingIronVigil')).toBe(false);
+  });
+});
+
+describe('cracked tile collapse', () => {
+  it('collapses under a piece that steps on it, marking the pit as claimed', () => {
+    const board = emptyBoard();
+    const rook = makePiece('rook', 'white', { x: 0, y: 0 });
+    board.pieces.push(rook);
+    board.tiles[0][3].state = 'cracked';
+
+    const result = applyMove(board, { from: { x: 0, y: 0 }, to: { x: 3, y: 0 }, isCapture: false });
+
+    expect(board.tiles[0][3].state).toBe('hole');
+    expect(board.tiles[0][3].claimedPiece).toBe(true);
+    expect(board.pieces.find((p) => p.id === rook.id)).toBeUndefined();
+    expect(result.animations.some((a) => a.type === 'moonDrop' && a.pieceId === rook.id)).toBe(true);
+  });
+});
+
+describe('queenResurrection', () => {
+  it('revives the most valuable fallen ally beside the queen, once per battle', () => {
+    const board = emptyBoard();
+    const queen = makePiece('queen', 'white', { x: 4, y: 4 });
+    queen.mutations.push('queenResurrection');
+    const rook = makePiece('rook', 'white', { x: 0, y: 0 });
+    const pawn = makePiece('pawn', 'white', { x: 1, y: 0 });
+    const attacker = makePiece('queen', 'black', { x: 7, y: 7 });
+    board.pieces.push(queen, rook, pawn, attacker);
+
+    applyMove(board, { from: { x: 7, y: 7 }, to: { x: 0, y: 0 }, isCapture: true, capturedId: rook.id });
+    applyMove(board, { from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, isCapture: true, capturedId: pawn.id });
+    expect(board.fallen.map((p) => p.id)).toEqual([rook.id, pawn.id]);
+
+    const result = activateAbility(board, queen, 'queenResurrection');
+    const revived = board.pieces.find((p) => p.id === rook.id);
+    expect(revived).toBeDefined(); // rook (5) outranks pawn (1)
+    expect(Math.abs(revived!.pos.x - 4) <= 1 && Math.abs(revived!.pos.y - 4) <= 1).toBe(true);
+    expect(result.animations.some((a) => a.type === 'revive')).toBe(true);
+    expect(board.fallen.map((p) => p.id)).toEqual([pawn.id]);
+    expect(canActivate(queen, 'queenResurrection')).toBe(false);
   });
 });

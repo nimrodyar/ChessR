@@ -1,4 +1,4 @@
-import { type Board, cloneBoard, type Color, inBounds, isHole, pieceAt, removePiece } from './board';
+import { type Board, cloneBoard, type Color, inBounds, isCracked, isHole, pieceAt, removePiece } from './board';
 import { opponentColor, posEq, type Piece, type PieceType, type Position } from './pieces';
 
 export interface Move {
@@ -173,13 +173,16 @@ function rayAttacks(board: Board, from: Position, dirs: number[][], target: Posi
   return false;
 }
 
-function findKing(board: Board, color: Color): Piece | undefined {
+export function findKing(board: Board, color: Color): Piece | undefined {
   return board.pieces.find((p) => p.color === color && p.type === 'king');
 }
 
 export function isInCheck(board: Board, color: Color): boolean {
   const king = findKing(board, color);
   if (!king) return false;
+  // King's Fence perk: while the fence stands, no attack registers as check — the first
+  // threatening blow must break the fence (handled at turn hand-off), then chess law resumes.
+  if (king.fenceIntact) return false;
   return isSquareAttacked(board, king.pos, opponentColor(color));
 }
 
@@ -190,7 +193,8 @@ function wouldExposeKing(board: Board, move: Move, color: Color): boolean {
   if (!piece) return false;
   if (move.isCapture && move.capturedId) removePiece(scratch, move.capturedId);
   piece.pos = move.to;
-  if (isHole(scratch, move.to)) removePiece(scratch, piece.id); // moon drop — the piece is gone either way
+  // Landing in a pit or on cracked ground kills the piece either way — it's gone for check purposes.
+  if (isHole(scratch, move.to) || isCracked(scratch, move.to)) removePiece(scratch, piece.id);
   return isInCheck(scratch, color);
 }
 
@@ -261,4 +265,19 @@ export function isCheckmate(board: Board, color: Color): boolean {
 /** Stalemate per the classic rule: not in check, but no legal move exists — a draw. */
 export function isStalemate(board: Board, color: Color): boolean {
   return !isInCheck(board, color) && allLegalMoves(board, color).length === 0;
+}
+
+/**
+ * Canonical key of the current position, for the classic threefold-repetition draw rule.
+ * Two positions repeat only when the same side is to move with identical piece placement,
+ * identical tile damage, and identical transient statuses (frozen/fence/en-passant).
+ */
+export function positionKey(board: Board, sideToMove: Color): string {
+  const pieces = board.pieces
+    .map((p) => `${p.type[0]}${p.color[0]}${p.pos.x}${p.pos.y}${p.frozenTurns ?? 0}${p.fenceIntact ? 'F' : ''}${p.hasMoved ? 'm' : ''}`)
+    .sort()
+    .join('|');
+  const tiles = board.tiles.map((row) => row.map((t) => (t.state === 'normal' ? '.' : t.state === 'cracked' ? 'c' : 'o')).join('')).join('');
+  const ep = board.enPassantTarget ? `${board.enPassantTarget.x},${board.enPassantTarget.y}` : '-';
+  return `${sideToMove}#${pieces}#${tiles}#${ep}`;
 }

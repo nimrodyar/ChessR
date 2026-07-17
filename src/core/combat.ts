@@ -1,11 +1,21 @@
-import { type Board, isHole, pieceAt, removePiece } from './board';
+import { type Board, isCracked, isHole, pieceAt, removePiece } from './board';
 import type { BoardMutation } from './abilities';
 import { ABILITIES } from '../data/abilities';
-import type { Color, MutationId, Piece, PieceType, Position } from './pieces';
+import { PIECE_WORTH, type Color, type MutationId, type Piece, type PieceType, type Position } from './pieces';
 import type { Move } from './rules';
 
 export interface AnimationStep {
-  type: 'move' | 'capture' | 'fallThrough' | 'destroyTile' | 'restoreTile' | 'promote' | 'moonDrop' | 'freeze';
+  type:
+    | 'move'
+    | 'capture'
+    | 'fallThrough'
+    | 'crackTile'
+    | 'destroyTile'
+    | 'restoreTile'
+    | 'promote'
+    | 'moonDrop'
+    | 'freeze'
+    | 'revive';
   pieceId?: string;
   from?: Position;
   to?: Position;
@@ -39,8 +49,13 @@ function processMutationQueue(board: Board, queue: BoardMutation[], animations: 
     const mutation = queue.shift()!;
 
     if (mutation.type === 'restoreTile') {
-      if (!isHole(board, mutation.pos)) continue;
-      board.tiles[mutation.pos.y][mutation.pos.x].state = 'normal';
+      const tile = board.tiles[mutation.pos.y][mutation.pos.x];
+      // Cracks can always be mended; a full pit only once it has claimed a piece —
+      // the abyss must be fed before it releases its ground.
+      const repairable = tile.state === 'cracked' || (tile.state === 'hole' && tile.claimedPiece);
+      if (!repairable) continue;
+      tile.state = 'normal';
+      tile.claimedPiece = false;
       animations.push({ type: 'restoreTile', pos: mutation.pos });
       continue;
     }
@@ -53,15 +68,37 @@ function processMutationQueue(board: Board, queue: BoardMutation[], animations: 
       continue;
     }
 
-    if (isHole(board, mutation.pos)) continue;
+    if (mutation.type === 'revive') {
+      // Return the most valuable fallen piece of this color to the battlefield.
+      const candidates = board.fallen.filter((p) => p.color === mutation.color && p.type !== 'king');
+      if (candidates.length === 0) continue;
+      const revived = candidates.reduce((best, p) => (PIECE_WORTH[p.type] > PIECE_WORTH[best.type] ? p : best));
+      board.fallen = board.fallen.filter((p) => p.id !== revived.id);
+      revived.pos = { ...mutation.pos };
+      revived.frozenTurns = 0;
+      board.pieces.push(revived);
+      animations.push({ type: 'revive', pieceId: revived.id, pos: { ...mutation.pos } });
+      continue;
+    }
+
+    // destroyTile: two-stage damage. Solid ground CRACKS (telegraphed, still walkable);
+    // a cracked tile struck again COLLAPSES into the abyss, taking any occupant with it.
+    const tile = board.tiles[mutation.pos.y][mutation.pos.x];
+    if (tile.state === 'hole') continue;
     const guardian = pieceAt(board, mutation.pos);
     if (guardian?.type === 'king' && guardian.mutations.includes('kingBunker')) continue;
 
-    board.tiles[mutation.pos.y][mutation.pos.x].state = 'hole';
-    animations.push({ type: 'destroyTile', pos: mutation.pos });
+    if (tile.state === 'normal') {
+      tile.state = 'cracked';
+      animations.push({ type: 'crackTile', pos: mutation.pos });
+      continue;
+    }
 
+    tile.state = 'hole';
+    animations.push({ type: 'destroyTile', pos: mutation.pos });
     const occupant = pieceAt(board, mutation.pos);
     if (occupant) {
+      tile.claimedPiece = true;
       animations.push({ type: 'fallThrough', pieceId: occupant.id, pos: { ...occupant.pos } });
       removePiece(board, occupant.id);
       queueAbilities(occupant, 'onDeath', undefined, board, queue);
@@ -116,6 +153,16 @@ export function applyMove(board: Board, move: Move): TurnResult {
 
   if (isHole(board, move.to)) {
     // "Moon drop" — the piece stepped onto an existing pit and plunges through.
+    animations.push({ type: 'moonDrop', pieceId: piece.id, pos: { ...piece.pos } });
+    removePiece(board, piece.id);
+    queueAbilities(piece, 'onDeath', undefined, board, mutationQueue);
+  } else if (isCracked(board, move.to)) {
+    // Cracked ground gives way underfoot: the tile collapses into a pit and the piece
+    // falls with it. The pit has now claimed a victim, which makes it repairable.
+    const tile = board.tiles[move.to.y][move.to.x];
+    tile.state = 'hole';
+    tile.claimedPiece = true;
+    animations.push({ type: 'destroyTile', pos: { ...move.to } });
     animations.push({ type: 'moonDrop', pieceId: piece.id, pos: { ...piece.pos } });
     removePiece(board, piece.id);
     queueAbilities(piece, 'onDeath', undefined, board, mutationQueue);
