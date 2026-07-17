@@ -281,6 +281,11 @@ body {
   color: #6b5a44 !important;
 }
 
+.choice-card {
+  align-items: center;
+  text-align: center;
+}
+
 .reward-card--common {
   border-color: #6b4f22;
 }

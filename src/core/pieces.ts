@@ -37,6 +37,10 @@ export function posEq(a: Position, b: Position): boolean {
   return a.x === b.x && a.y === b.y;
 }
 
+export function opponentColor(color: Color): Color {
+  return color === 'white' ? 'black' : 'white';
+}
+
 export function posKey(p: Position): string {
   return `${p.x},${p.y}`;
 }
