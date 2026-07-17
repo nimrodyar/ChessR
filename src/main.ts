@@ -4,7 +4,7 @@ import { isCheckmate, isInCheck, isStalemate, legalMoves, type Move } from './co
 import { activateAbility, applyMove, canActivate, tickFrozenStatuses, type AnimationStep } from './core/combat';
 import { chooseAiMove } from './core/ai';
 import { pickPerkOptions } from './core/perks';
-import { createScene3D, tickAmbient } from './render/three/scene3d';
+import { createScene3D, resetView, tickAmbient } from './render/three/scene3d';
 import { BoardView3D } from './render/three/boardView3d';
 import { PieceView3D } from './render/three/pieceView3d';
 import { playAnimations } from './render/three/effects3d';
@@ -57,6 +57,7 @@ async function main(): Promise<void> {
   const hud = new Hud(appEl, {
     onRestart: () => resetRun(),
     onToggleViewLock: () => toggleViewLock(),
+    onResetView: () => resetView(scene3d),
   });
 
   function aiColor(): Color {
@@ -177,6 +178,7 @@ async function main(): Promise<void> {
     pieceView.clear();
     pieceView.syncPieces(board.pieces);
     scene3d.worldGroup.rotation.y = humanColor === 'black' ? Math.PI : 0;
+    resetView(scene3d); // snap the camera back to its home framing at the start of every battle
     rewardScreen.hide();
 
     if (currentTurn === humanColor) {

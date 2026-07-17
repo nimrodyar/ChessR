@@ -5,6 +5,10 @@ import { BOARD_SIZE } from '../../core/board';
 
 const BOARD_OFFSET = (BOARD_SIZE - 1) / 2;
 
+/** The camera's home framing — used at startup and by "Reset View". */
+const DEFAULT_CAMERA_POS = { x: 0.5, y: 6.6, z: 7.6 };
+const DEFAULT_TARGET = { x: 0, y: 0.3, z: 0 };
+
 export interface Scene3D {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
@@ -47,7 +51,7 @@ export function createScene3D(container: HTMLElement): Scene3D {
   scene.fog = new THREE.FogExp2(0x0a0810, 0.022);
 
   const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
-  camera.position.set(0.5, 6.6, 7.6);
+  camera.position.set(DEFAULT_CAMERA_POS.x, DEFAULT_CAMERA_POS.y, DEFAULT_CAMERA_POS.z);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -60,11 +64,11 @@ export function createScene3D(container: HTMLElement): Scene3D {
   container.appendChild(renderer.domElement);
 
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, 0.3, 0);
+  controls.target.set(DEFAULT_TARGET.x, DEFAULT_TARGET.y, DEFAULT_TARGET.z);
   controls.enableDamping = true;
   controls.dampingFactor = 0.06;
-  controls.minDistance = 4;
-  controls.maxDistance = 14;
+  controls.minDistance = 3;
+  controls.maxDistance = 26;
   controls.maxPolarAngle = Math.PI * 0.47;
 
   window.addEventListener('resize', () => {
@@ -177,6 +181,27 @@ export function createScene3D(container: HTMLElement): Scene3D {
     emberSpeeds,
     emberCount,
   };
+}
+
+/** Glides the camera back to its home framing. Works even while the view is locked
+ * (OrbitControls disabled), since it drives the camera directly rather than through input. */
+export function resetView(scene3d: Scene3D): void {
+  gsap.to(scene3d.camera.position, {
+    x: DEFAULT_CAMERA_POS.x,
+    y: DEFAULT_CAMERA_POS.y,
+    z: DEFAULT_CAMERA_POS.z,
+    duration: 0.6,
+    ease: 'power2.inOut',
+  });
+  gsap.to(scene3d.controls.target, {
+    x: DEFAULT_TARGET.x,
+    y: DEFAULT_TARGET.y,
+    z: DEFAULT_TARGET.z,
+    duration: 0.6,
+    ease: 'power2.inOut',
+    onUpdate: () => scene3d.controls.update(),
+    onComplete: () => scene3d.controls.update(),
+  });
 }
 
 export function tickAmbient(scene3d: Scene3D, elapsed: number): void {
