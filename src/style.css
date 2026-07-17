@@ -297,6 +297,70 @@ body {
   text-align: center;
 }
 
+/* When a perk fires — shown wherever a perk is described */
+.trigger-chip {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.trigger-chip--onDeath {
+  background: rgba(138, 47, 47, 0.35);
+  color: #ff8a7a;
+  border: 1px solid rgba(224, 72, 63, 0.5);
+}
+
+.trigger-chip--onCapture {
+  background: rgba(201, 122, 39, 0.3);
+  color: #ffb066;
+  border: 1px solid rgba(224, 140, 63, 0.5);
+}
+
+.trigger-chip--activated {
+  background: rgba(63, 124, 201, 0.3);
+  color: #8fc3f2;
+  border: 1px solid rgba(111, 168, 224, 0.5);
+}
+
+.reward-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.piece-info-ability-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Floating hover card describing the piece under the cursor */
+.piece-tooltip {
+  position: fixed;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 250px;
+  background: linear-gradient(180deg, #1a120c, #0c0808);
+  border: 1px solid #6b4f22;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.85), inset 0 0 12px rgba(201, 162, 39, 0.06);
+  padding: 12px 14px;
+  pointer-events: none;
+}
+
+.piece-tooltip-frozen {
+  font-size: 12px;
+  color: #8fd2f2;
+}
+
 .reward-card--common {
   border-color: #6b4f22;
 }

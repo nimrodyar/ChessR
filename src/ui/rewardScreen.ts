@@ -1,5 +1,6 @@
 import type { AbilityDef } from '../core/abilities';
 import type { MutationId } from '../core/pieces';
+import { TRIGGER_LABELS } from './hud';
 
 export class RewardScreen {
   private overlay: HTMLDivElement;
@@ -38,7 +39,10 @@ export class RewardScreen {
             <span class="reward-card-rarity reward-card-rarity--${ability.rarity}">${ability.rarity}</span>
           </div>
           <strong>${ability.name}</strong>
-          <span class="reward-card-piece">${ability.pieceType}</span>
+          <div class="reward-card-meta">
+            <span class="reward-card-piece">${ability.pieceType}</span>
+            <span class="trigger-chip trigger-chip--${ability.trigger}">${TRIGGER_LABELS[ability.trigger]}</span>
+          </div>
           <span>${ability.description}</span>
         `;
         card.onclick = () => {
