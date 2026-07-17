@@ -9,6 +9,7 @@ export interface AbilityButtonSpec {
 export interface HudCallbacks {
   onRestart: () => void;
   onToggleViewLock: () => void;
+  onResetView: () => void;
 }
 
 export interface SelectedPieceInfo {
@@ -42,6 +43,12 @@ export class Hud {
     this.lockBtn.className = 'hud-button';
     this.lockBtn.onclick = () => callbacks.onToggleViewLock();
     buttonRow.appendChild(this.lockBtn);
+
+    const resetViewBtn = document.createElement('button');
+    resetViewBtn.textContent = 'Reset View';
+    resetViewBtn.className = 'hud-button';
+    resetViewBtn.onclick = () => callbacks.onResetView();
+    buttonRow.appendChild(resetViewBtn);
 
     const restartBtn = document.createElement('button');
     restartBtn.textContent = 'Restart Battle';
