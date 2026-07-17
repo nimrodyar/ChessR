@@ -1,4 +1,4 @@
-import type { AbilityRarity } from '../core/abilities';
+import type { AbilityRarity, AbilityTrigger } from '../core/abilities';
 
 export interface AbilityButtonSpec {
   id: string;
@@ -12,9 +12,40 @@ export interface HudCallbacks {
   onResetView: () => void;
 }
 
+export interface AbilityInfo {
+  name: string;
+  description: string;
+  rarity: AbilityRarity;
+  trigger: AbilityTrigger;
+}
+
 export interface SelectedPieceInfo {
   label: string;
-  abilities: { name: string; description: string; rarity: AbilityRarity }[];
+  abilities: AbilityInfo[];
+}
+
+export interface PieceTooltipInfo {
+  title: string;
+  frozen: boolean;
+  abilities: AbilityInfo[];
+}
+
+/** Plain-language labels for when each perk actually fires — shown as chips everywhere a perk is described. */
+export const TRIGGER_LABELS: Record<AbilityTrigger, string> = {
+  onDeath: 'when slain',
+  onCapture: 'on kill',
+  activated: 'once per battle',
+};
+
+export function abilityEntryHtml(a: AbilityInfo): string {
+  return `
+    <div class="piece-info-ability piece-info-ability--${a.rarity}">
+      <div class="piece-info-ability-head">
+        <span class="piece-info-ability-name">${a.name}</span>
+        <span class="trigger-chip trigger-chip--${a.trigger}">${TRIGGER_LABELS[a.trigger]}</span>
+      </div>
+      <div class="piece-info-ability-desc">${a.description}</div>
+    </div>`;
 }
 
 export class Hud {
@@ -22,6 +53,7 @@ export class Hud {
   private abilityRow: HTMLDivElement;
   private lockBtn: HTMLButtonElement;
   private pieceInfoEl: HTMLDivElement;
+  private tooltipEl: HTMLDivElement;
 
   constructor(container: HTMLElement, callbacks: HudCallbacks) {
     const root = document.createElement('div');
@@ -63,6 +95,11 @@ export class Hud {
     this.pieceInfoEl.className = 'piece-info-panel';
     this.pieceInfoEl.style.display = 'none';
     container.appendChild(this.pieceInfoEl);
+
+    this.tooltipEl = document.createElement('div');
+    this.tooltipEl.className = 'piece-tooltip';
+    this.tooltipEl.style.display = 'none';
+    container.appendChild(this.tooltipEl);
   }
 
   setSelectedPieceInfo(info: SelectedPieceInfo | null): void {
@@ -75,16 +112,33 @@ export class Hud {
     const abilityHtml =
       info.abilities.length === 0
         ? '<div class="piece-info-empty">No perks granted yet</div>'
-        : info.abilities
-            .map(
-              (a) => `
-          <div class="piece-info-ability piece-info-ability--${a.rarity}">
-            <div class="piece-info-ability-name">${a.name}</div>
-            <div class="piece-info-ability-desc">${a.description}</div>
-          </div>`,
-            )
-            .join('');
+        : info.abilities.map(abilityEntryHtml).join('');
     this.pieceInfoEl.innerHTML = `<div class="piece-info-title">${info.label}</div>${abilityHtml}`;
+  }
+
+  /** Floating hover card that follows the cursor, explaining the hovered piece's perks. */
+  setPieceTooltip(info: PieceTooltipInfo | null, clientX = 0, clientY = 0): void {
+    if (!info) {
+      this.tooltipEl.style.display = 'none';
+      return;
+    }
+    const frozenHtml = info.frozen ? '<div class="piece-tooltip-frozen">❄ Frozen — cannot move this turn</div>' : '';
+    const abilityHtml =
+      info.abilities.length === 0
+        ? '<div class="piece-info-empty">No perks</div>'
+        : info.abilities.map(abilityEntryHtml).join('');
+    this.tooltipEl.innerHTML = `<div class="piece-info-title">${info.title}</div>${frozenHtml}${abilityHtml}`;
+    this.tooltipEl.style.display = 'flex';
+
+    // Position beside the cursor, flipping to keep the card fully on screen.
+    const pad = 14;
+    const rect = this.tooltipEl.getBoundingClientRect();
+    let x = clientX + pad;
+    let y = clientY + pad;
+    if (x + rect.width > window.innerWidth - 8) x = clientX - rect.width - pad;
+    if (y + rect.height > window.innerHeight - 8) y = clientY - rect.height - pad;
+    this.tooltipEl.style.left = `${Math.max(8, x)}px`;
+    this.tooltipEl.style.top = `${Math.max(8, y)}px`;
   }
 
   setStatus(text: string): void {
