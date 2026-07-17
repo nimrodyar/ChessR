@@ -33,15 +33,17 @@ export class RewardScreen {
       for (const ability of options) {
         const card = document.createElement('button');
         card.className = `reward-card reward-card--${ability.rarity}`;
+        // Strict card structure, top to bottom: symbol, title, use, description.
         card.innerHTML = `
-          <div class="reward-card-header">
-            <strong>${ability.icon} ${ability.name}</strong>
+          <div class="reward-card-top">
+            <span class="reward-card-symbol">${ability.icon}</span>
             <span class="reward-card-rarity reward-card-rarity--${ability.rarity}">${ability.rarity}</span>
           </div>
-          <div class="reward-card-meta">
+          <strong class="reward-card-title">${ability.name}</strong>
+          <div class="reward-card-use">
             <span class="trigger-chip trigger-chip--${ability.trigger}">${TRIGGER_LABELS[ability.trigger]}</span>
           </div>
-          <span>${ability.description}</span>
+          <span class="reward-card-desc">${ability.description}</span>
         `;
         card.onclick = () => {
           this.hide();
