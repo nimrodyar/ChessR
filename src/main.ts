@@ -9,6 +9,7 @@ import { boardToWorld, burstParticlesAt, createScene3D, resetView, shakeWorld, t
 import { BoardView3D } from './render/three/boardView3d';
 import { PieceView3D } from './render/three/pieceView3d';
 import { playAnimations } from './render/three/effects3d';
+import { playCaptureSfx, playMoveSfx, playSelectSfx } from './audio/sfx';
 import { Hud, type AbilityButtonSpec } from './ui/hud';
 import { RewardScreen } from './ui/rewardScreen';
 import { ChoiceOverlay } from './ui/choiceOverlay';
@@ -260,6 +261,7 @@ async function main(): Promise<void> {
         return;
       }
       selected = clickedPiece;
+      playSelectSfx();
       selectedMoves = legalMoves(board, clickedPiece);
       boardView.highlight(
         clickedPiece.pos,
@@ -320,6 +322,8 @@ async function main(): Promise<void> {
     const moveQuality = move.isCapture ? rateMoveQuality(board, move, humanColor) : 0.5;
     const moverId = pieceAt(board, move.from)?.id;
     const opponentBefore = countPieces(aiColor());
+    if (move.isCapture) playCaptureSfx();
+    else playMoveSfx();
     const result = applyMove(board, move);
     const ended = await resolveTurn(result);
     if (ended) return;
@@ -348,6 +352,8 @@ async function main(): Promise<void> {
     const moveQuality = move.isCapture ? rateMoveQuality(board, move, aiColor()) : 0.5;
     const moverId = pieceAt(board, move.from)?.id;
     const humanBefore = countPieces(humanColor);
+    if (move.isCapture) playCaptureSfx();
+    else playMoveSfx();
     const result = applyMove(board, move);
     const ended = await resolveTurn(result);
     if (ended) return;
