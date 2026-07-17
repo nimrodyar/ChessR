@@ -34,8 +34,8 @@ export interface PieceTooltipInfo {
 /** Plain-language labels (with a scannable symbol) for when each perk actually fires —
  * shown as chips everywhere a perk is described. */
 export const TRIGGER_LABELS: Record<AbilityTrigger, string> = {
-  onDeath: '⚰ when slain',
-  onCapture: '⚔ on kill',
+  onDeath: '⚰ on death',
+  onCapture: '⚔ on capture',
   activated: '✦ once per battle',
 };
 

@@ -74,44 +74,46 @@ async function main(): Promise<void> {
     hud.setViewLocked(viewLocked);
   }
 
-  function grantMutation(mutationId: MutationId, color: Color = humanColor): void {
-    (color === humanColor ? ownedMutations : aiMutations).add(mutationId);
-    const pieceType = ABILITIES[mutationId].pieceType;
-    for (const piece of board.pieces) {
-      if (piece.color === color && piece.type === pieceType && !piece.mutations.includes(mutationId)) {
-        piece.mutations.push(mutationId);
-      }
-    }
+  /** Upgrades exactly one piece — the one that earned it. Benefit and tradeoff stay with it. */
+  function grantMutationToPiece(mutationId: MutationId, piece: Piece): void {
+    (piece.color === humanColor ? ownedMutations : aiMutations).add(mutationId);
+    if (!piece.mutations.includes(mutationId)) piece.mutations.push(mutationId);
   }
 
+  /** At battle start, each perk carried over from earlier in the run is assigned to a single
+   * fresh piece of its type — never sprayed across the whole type. */
   function applyOwnedMutations(): void {
-    for (const mutationId of ownedMutations) grantMutation(mutationId);
+    for (const mutationId of ownedMutations) {
+      const pieceType = ABILITIES[mutationId].pieceType;
+      const candidate = board.pieces.find(
+        (p) => p.color === humanColor && p.type === pieceType && !p.mutations.includes(mutationId),
+      );
+      if (candidate) candidate.mutations.push(mutationId);
+    }
   }
 
   function countPieces(color: Color): number {
     return board.pieces.filter((p) => p.color === color).length;
   }
 
-  /** Offers a perk pick; `quality` (0..1) is how strong the earning move was — it drives 30%
-   * of the rarity roll, the other 70% stays pure luck. */
-  function offerPerk(quality: number): Promise<void> {
+  /** Offers an upgrade for the specific piece that made the capture; `quality` (0..1) is how
+   * strong the earning move was — it drives 30% of the rarity roll, the other 70% is luck. */
+  function offerPerk(quality: number, capturer: Piece): Promise<void> {
     return new Promise((resolve) => {
-      const options = pickPerkOptions(board, ownedMutations, { color: humanColor, quality });
+      const options = pickPerkOptions(board, ownedMutations, {
+        color: humanColor,
+        quality,
+        pieceType: capturer.type,
+      });
       if (options.length === 0) {
         resolve();
         return;
       }
-      const flavor =
-        quality >= 0.85
-          ? 'A masterful strike! The board rewards brilliance...'
-          : quality >= 0.55
-            ? 'A worthy kill. A perk manifests from the fallen...'
-            : 'A perk manifests from the fallen...';
       rewardScreen.show(
-        flavor,
+        `Choose an upgrade for your ${capturer.type}:`,
         options,
         (id) => {
-          grantMutation(id);
+          grantMutationToPiece(id, capturer);
           updateAbilityButtons();
           resolve();
         },
@@ -120,19 +122,20 @@ async function main(): Promise<void> {
     });
   }
 
-  /** The AI claims a perk for its own capture — same pool, same 30/70 skill-luck rarity rule,
+  /** The AI upgrades its capturing piece — same pool, same 30/70 skill-luck rarity rule,
    * limited to passive triggers it can actually use. Returns an announcement, or null. */
-  function grantAiPerk(quality: number): string | null {
+  function grantAiPerk(quality: number, capturer: Piece): string | null {
     const options = pickPerkOptions(board, aiMutations, {
       color: aiColor(),
       count: 1,
       quality,
       allowedTriggers: ['onDeath', 'onCapture'],
+      pieceType: capturer.type,
     });
     if (options.length === 0) return null;
     const perk = options[0];
-    grantMutation(perk.id, aiColor());
-    return `Enemy ${perk.pieceType}s gain ${perk.icon} ${perk.name} (${perk.rarity})!`;
+    grantMutationToPiece(perk.id, capturer);
+    return `Enemy ${capturer.type} gained ${perk.icon} ${perk.name}!`;
   }
 
   function choosePromotion(): Promise<PieceType> {
@@ -315,15 +318,20 @@ async function main(): Promise<void> {
     // Rate the move against every alternative BEFORE applying it — this "chess book" score
     // is the skill share (30%) of the perk-rarity roll for any capture it makes.
     const moveQuality = move.isCapture ? rateMoveQuality(board, move, humanColor) : 0.5;
+    const moverId = pieceAt(board, move.from)?.id;
     const opponentBefore = countPieces(aiColor());
     const result = applyMove(board, move);
     const ended = await resolveTurn(result);
     if (ended) return;
     tickFrozenStatuses(board, humanColor);
 
-    const capturesTaken = opponentBefore - countPieces(aiColor());
-    for (let i = 0; i < capturesTaken; i++) {
-      await offerPerk(moveQuality);
+    // The upgrade belongs to the piece that made the attack — and only if it survived it.
+    const capturer = board.pieces.find((p) => p.id === moverId);
+    if (capturer) {
+      const capturesTaken = opponentBefore - countPieces(aiColor());
+      for (let i = 0; i < capturesTaken; i++) {
+        await offerPerk(moveQuality, capturer);
+      }
     }
 
     await advanceTurnAfter(humanColor);
@@ -338,19 +346,23 @@ async function main(): Promise<void> {
       return;
     }
     const moveQuality = move.isCapture ? rateMoveQuality(board, move, aiColor()) : 0.5;
+    const moverId = pieceAt(board, move.from)?.id;
     const humanBefore = countPieces(humanColor);
     const result = applyMove(board, move);
     const ended = await resolveTurn(result);
     if (ended) return;
     tickFrozenStatuses(board, aiColor());
 
-    // The enemy earns boons by the same law the player does — one perk per piece taken.
+    // The enemy plays by the same law: the upgrade goes to its attacking piece, if it survived.
     let perkNote: string | null = null;
-    const capturesTaken = humanBefore - countPieces(humanColor);
-    for (let i = 0; i < capturesTaken; i++) {
-      perkNote = grantAiPerk(moveQuality) ?? perkNote;
+    const capturer = board.pieces.find((p) => p.id === moverId);
+    if (capturer) {
+      const capturesTaken = humanBefore - countPieces(humanColor);
+      for (let i = 0; i < capturesTaken; i++) {
+        perkNote = grantAiPerk(moveQuality, capturer) ?? perkNote;
+      }
+      if (perkNote) pieceView.syncPieces(board.pieces); // show the new perk gems immediately
     }
-    if (perkNote) pieceView.syncPieces(board.pieces); // show the new perk gems immediately
 
     await advanceTurnAfter(aiColor(), perkNote);
   }
@@ -369,9 +381,13 @@ async function main(): Promise<void> {
     if (ended) return;
     tickFrozenStatuses(board, humanColor);
 
-    const capturesTaken = opponentBefore - countPieces(aiColor());
-    for (let i = 0; i < capturesTaken; i++) {
-      await offerPerk(0.5); // ability blasts aren't "book moves" — neutral skill share, luck decides
+    // The activating piece is the attacker here — if its own blast killed it, no reward.
+    const capturer = board.pieces.find((p) => p.id === piece.id);
+    if (capturer) {
+      const capturesTaken = opponentBefore - countPieces(aiColor());
+      for (let i = 0; i < capturesTaken; i++) {
+        await offerPerk(0.5, capturer); // ability blasts aren't "book moves" — luck decides
+      }
     }
 
     await advanceTurnAfter(humanColor);

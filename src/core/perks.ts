@@ -1,6 +1,6 @@
 import type { AbilityDef, AbilityRarity, AbilityTrigger } from './abilities';
 import type { Board } from './board';
-import type { Color, MutationId } from './pieces';
+import type { Color, MutationId, PieceType } from './pieces';
 import { ABILITIES } from '../data/abilities';
 
 const RARITY_ORDER: AbilityRarity[] = ['common', 'uncommon', 'rare', 'legendary'];
@@ -26,6 +26,8 @@ export interface PerkDrawOptions {
   quality?: number;
   /** Restrict to certain triggers — e.g. the AI only takes passive perks it can actually use. */
   allowedTriggers?: AbilityTrigger[];
+  /** Restrict to perks for one piece type — the piece that made the capture is the one upgraded. */
+  pieceType?: PieceType;
   /** Injectable randomness for tests. */
   rng?: () => number;
 }
@@ -37,11 +39,15 @@ export interface PerkDrawOptions {
  * that rarity (falling back to the nearest populated tier).
  */
 export function pickPerkOptions(board: Board, owned: ReadonlySet<MutationId>, options: PerkDrawOptions = {}): AbilityDef[] {
-  const { color = 'white', count = 3, quality = 0.5, allowedTriggers, rng = Math.random } = options;
+  const { color = 'white', count = 3, quality = 0.5, allowedTriggers, pieceType, rng = Math.random } = options;
 
   const availableTypes = new Set(board.pieces.filter((p) => p.color === color).map((p) => p.type));
   const remaining = Object.values(ABILITIES).filter(
-    (a) => !owned.has(a.id) && availableTypes.has(a.pieceType) && (!allowedTriggers || allowedTriggers.includes(a.trigger)),
+    (a) =>
+      !owned.has(a.id) &&
+      availableTypes.has(a.pieceType) &&
+      (!allowedTriggers || allowedTriggers.includes(a.trigger)) &&
+      (!pieceType || a.pieceType === pieceType),
   );
 
   const picks: AbilityDef[] = [];
