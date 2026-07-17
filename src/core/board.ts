@@ -1,14 +1,21 @@
 import { type Color, type Piece, type PieceType, type Position, makePiece, posEq, resetIdCounter } from './pieces';
 
-export type TileState = 'normal' | 'hole';
+/** Tiles degrade in two stages: damage first CRACKS a tile (still walkable, visibly
+ * telegraphed), and a cracked tile COLLAPSES into a pit only when a piece steps on it. */
+export type TileState = 'normal' | 'cracked' | 'hole';
 
 export interface Tile {
   state: TileState;
+  /** Set once this tile has collapsed under a piece and killed it — only such pits
+   * (or mere cracks) can be repaired back to solid ground. */
+  claimedPiece?: boolean;
 }
 
 export interface Board {
   tiles: Tile[][]; // tiles[y][x]
   pieces: Piece[];
+  /** Graveyard: every piece removed from play this battle, in death order — revival pulls from here. */
+  fallen: Piece[];
   /** The square a pawn skipped over on its last double-step move, capturable en passant this turn only. */
   enPassantTarget?: Position;
 }
@@ -30,7 +37,13 @@ export function pieceAt(board: Board, pos: Position): Piece | undefined {
 }
 
 export function removePiece(board: Board, pieceId: string): void {
+  const piece = board.pieces.find((p) => p.id === pieceId);
   board.pieces = board.pieces.filter((p) => p.id !== pieceId);
+  if (piece) board.fallen.push(piece);
+}
+
+export function isCracked(board: Board, pos: Position): boolean {
+  return board.tiles[pos.y][pos.x].state === 'cracked';
 }
 
 export function createInitialBoard(): Board {
@@ -45,18 +58,20 @@ export function createInitialBoard(): Board {
     pieces.push(makePiece('pawn', 'white', { x, y: 6 }));
     pieces.push(makePiece(BACK_RANK[x], 'white', { x, y: 7 }));
   }
-  return { tiles, pieces };
+  return { tiles, pieces, fallen: [] };
 }
 
 export function cloneBoard(board: Board): Board {
+  const clonePiece = (p: Piece): Piece => ({
+    ...p,
+    pos: { ...p.pos },
+    mutations: [...p.mutations],
+    usedActivated: p.usedActivated ? { ...p.usedActivated } : undefined,
+  });
   return {
     tiles: board.tiles.map((row) => row.map((t) => ({ ...t }))),
-    pieces: board.pieces.map((p) => ({
-      ...p,
-      pos: { ...p.pos },
-      mutations: [...p.mutations],
-      usedActivated: p.usedActivated ? { ...p.usedActivated } : undefined,
-    })),
+    pieces: board.pieces.map(clonePiece),
+    fallen: board.fallen.map(clonePiece),
     enPassantTarget: board.enPassantTarget ? { ...board.enPassantTarget } : undefined,
   };
 }

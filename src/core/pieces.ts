@@ -13,8 +13,10 @@ export type MutationId =
   | 'rookShackle'
   | 'queenEarthquake'
   | 'queenCataclysm'
+  | 'queenResurrection'
   | 'kingBunker'
-  | 'kingIronVigil';
+  | 'kingIronVigil'
+  | 'kingFence';
 
 export interface Position {
   x: number;
@@ -31,7 +33,20 @@ export interface Piece {
   usedActivated?: Partial<Record<MutationId, boolean>>;
   /** Turns remaining where this piece cannot move. Decremented once per its own side's turn. */
   frozenTurns?: number;
+  /** King's Fence perk: while true, this king cannot be checked — the first would-be check
+   * breaks the fence instead. Chess law resumes untouched once it falls. */
+  fenceIntact?: boolean;
 }
+
+/** Classic material worth — used to pick the most valuable fallen piece for revival. */
+export const PIECE_WORTH: Record<PieceType, number> = {
+  pawn: 1,
+  knight: 3,
+  bishop: 3,
+  rook: 5,
+  queen: 9,
+  king: 1000,
+};
 
 export function posEq(a: Position, b: Position): boolean {
   return a.x === b.x && a.y === b.y;

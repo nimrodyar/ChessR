@@ -10,6 +10,7 @@ export interface HudCallbacks {
   onRestart: () => void;
   onToggleViewLock: () => void;
   onResetView: () => void;
+  onOpenOptions: () => void;
 }
 
 export interface AbilityInfo {
@@ -89,6 +90,12 @@ export class Hud {
     restartBtn.className = 'hud-button';
     restartBtn.onclick = () => callbacks.onRestart();
     buttonRow.appendChild(restartBtn);
+
+    const optionsBtn = document.createElement('button');
+    optionsBtn.textContent = '⚙ Options';
+    optionsBtn.className = 'hud-button';
+    optionsBtn.onclick = () => callbacks.onOpenOptions();
+    buttonRow.appendChild(optionsBtn);
 
     root.appendChild(buttonRow);
     container.appendChild(root);

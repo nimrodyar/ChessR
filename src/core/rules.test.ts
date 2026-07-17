@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { Board } from './board';
 import { createInitialBoard, pieceAt } from './board';
 import { makePiece } from './pieces';
-import { allLegalMoves, isCheckmate, isInCheck, isKingCaptured, isStalemate, legalMoves } from './rules';
+import { allLegalMoves, isCheckmate, isInCheck, isKingCaptured, isStalemate, legalMoves, positionKey } from './rules';
 
 function emptyBoard(): Board {
   return {
     tiles: Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => ({ state: 'normal' as const }))),
     pieces: [],
+    fallen: [],
   };
 }
 
@@ -253,5 +254,41 @@ describe('en passant', () => {
 
     const moves = legalMoves(board, whitePawn);
     expect(moves.some((m) => m.enPassant)).toBe(false);
+  });
+});
+
+describe("king's fence", () => {
+  it('suppresses check while intact and resumes normal law once broken', () => {
+    const board = emptyBoard();
+    const king = makePiece('king', 'white', { x: 4, y: 7 });
+    king.fenceIntact = true;
+    const rook = makePiece('rook', 'black', { x: 4, y: 0 });
+    board.pieces.push(king, rook);
+
+    expect(isInCheck(board, 'white')).toBe(false); // the fence absorbs the threat
+    expect(isCheckmate(board, 'white')).toBe(false);
+
+    king.fenceIntact = false;
+    expect(isInCheck(board, 'white')).toBe(true); // fence down — chess law resumes
+  });
+});
+
+describe('positionKey', () => {
+  it('is identical for identical positions and differs by side to move', () => {
+    const a = emptyBoard();
+    a.pieces.push(makePiece('king', 'white', { x: 4, y: 7 }), makePiece('king', 'black', { x: 4, y: 0 }));
+    const b = emptyBoard();
+    b.pieces.push(makePiece('king', 'black', { x: 4, y: 0 }), makePiece('king', 'white', { x: 4, y: 7 }));
+
+    expect(positionKey(a, 'white')).toBe(positionKey(b, 'white')); // piece order is irrelevant
+    expect(positionKey(a, 'white')).not.toBe(positionKey(a, 'black'));
+  });
+
+  it('changes when tile damage changes', () => {
+    const board = emptyBoard();
+    board.pieces.push(makePiece('king', 'white', { x: 4, y: 7 }));
+    const before = positionKey(board, 'white');
+    board.tiles[3][3].state = 'cracked';
+    expect(positionKey(board, 'white')).not.toBe(before);
   });
 });

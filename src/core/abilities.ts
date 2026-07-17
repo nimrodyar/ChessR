@@ -1,11 +1,12 @@
 import type { Board } from './board';
 import type { Move } from './rules';
-import type { MutationId, Piece, PieceType, Position } from './pieces';
+import type { Color, MutationId, Piece, PieceType, Position } from './pieces';
 
 export type BoardMutation =
   | { type: 'destroyTile'; pos: Position }
   | { type: 'restoreTile'; pos: Position }
-  | { type: 'freeze'; pieceId: string; turns: number };
+  | { type: 'freeze'; pieceId: string; turns: number }
+  | { type: 'revive'; pos: Position; color: Color };
 
 export type AbilityTrigger = 'onDeath' | 'onCapture' | 'activated';
 

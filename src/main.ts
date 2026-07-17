@@ -1,16 +1,25 @@
 import './style.css';
 import * as THREE from 'three';
 import { createInitialBoard, pieceAt, type Board } from './core/board';
-import { isCheckmate, isInCheck, isStalemate, legalMoves, type Move } from './core/rules';
+import { findKing, isCheckmate, isInCheck, isSquareAttacked, isStalemate, legalMoves, positionKey, type Move } from './core/rules';
 import { activateAbility, applyMove, canActivate, tickFrozenStatuses, type AnimationStep } from './core/combat';
 import { chooseAiMove, rateMoveQuality } from './core/ai';
 import { pickPerkOptions } from './core/perks';
-import { boardToWorld, burstParticlesAt, createScene3D, resetView, shakeWorld, tickAmbient } from './render/three/scene3d';
+import {
+  applyGraphicsQuality,
+  applyViewPreset,
+  boardToWorld,
+  burstParticlesAt,
+  createScene3D,
+  shakeWorld,
+  tickAmbient,
+} from './render/three/scene3d';
 import { BoardView3D } from './render/three/boardView3d';
 import { PieceView3D } from './render/three/pieceView3d';
 import { playAnimations } from './render/three/effects3d';
-import { playCaptureSfx, playMoveSfx, playSelectSfx } from './audio/sfx';
+import { playCaptureSfx, playMoveSfx, playSelectSfx, setSfxEnabled, setSfxVolume } from './audio/sfx';
 import { Hud, type AbilityButtonSpec } from './ui/hud';
+import { loadSettings, OptionsMenu, type GameSettings } from './ui/options';
 import { RewardScreen } from './ui/rewardScreen';
 import { ChoiceOverlay } from './ui/choiceOverlay';
 import { ABILITIES } from './data/abilities';
@@ -58,12 +67,34 @@ async function main(): Promise<void> {
   const ownedMutations = new Set<MutationId>();
   /** The AI's earned perks — reset each battle, since each battle fields a fresh enemy army. */
   const aiMutations = new Set<MutationId>();
+  /** Times each position has occurred this battle — three visits is a draw, per classic chess law. */
+  let positionCounts = new Map<string, number>();
+
+  let settings: GameSettings = loadSettings();
+
+  function applySettings(next: GameSettings): void {
+    const viewChanged = next.view !== settings.view;
+    const graphicsChanged = next.graphics !== settings.graphics;
+    settings = next;
+    setSfxEnabled(settings.sfxEnabled);
+    setSfxVolume(settings.sfxVolume);
+    if (graphicsChanged) applyGraphicsQuality(scene3d, settings.graphics);
+    if (viewChanged) applyViewPreset(scene3d, settings.view);
+  }
 
   const hud = new Hud(appEl, {
     onRestart: () => resetRun(),
     onToggleViewLock: () => toggleViewLock(),
-    onResetView: () => resetView(scene3d),
+    onResetView: () => applyViewPreset(scene3d, settings.view),
+    onOpenOptions: () => optionsMenu.show(),
   });
+
+  const optionsMenu = new OptionsMenu(appEl, settings, (next) => applySettings(next));
+  // Apply persisted settings on boot (sfx immediately; graphics/view once so they take effect).
+  setSfxEnabled(settings.sfxEnabled);
+  setSfxVolume(settings.sfxVolume);
+  applyGraphicsQuality(scene3d, settings.graphics);
+  applyViewPreset(scene3d, settings.view);
 
   function aiColor(): Color {
     return opponentColor(humanColor);
@@ -79,6 +110,7 @@ async function main(): Promise<void> {
   function grantMutationToPiece(mutationId: MutationId, piece: Piece): void {
     (piece.color === humanColor ? ownedMutations : aiMutations).add(mutationId);
     if (!piece.mutations.includes(mutationId)) piece.mutations.push(mutationId);
+    if (mutationId === 'kingFence') piece.fenceIntact = true;
   }
 
   /** At battle start, each perk carried over from earlier in the run is assigned to a single
@@ -89,7 +121,10 @@ async function main(): Promise<void> {
       const candidate = board.pieces.find(
         (p) => p.color === humanColor && p.type === pieceType && !p.mutations.includes(mutationId),
       );
-      if (candidate) candidate.mutations.push(mutationId);
+      if (candidate) {
+        candidate.mutations.push(mutationId);
+        if (mutationId === 'kingFence') candidate.fenceIntact = true;
+      }
     }
   }
 
@@ -206,6 +241,7 @@ async function main(): Promise<void> {
   function startBattle(): void {
     board = createInitialBoard();
     aiMutations.clear(); // each battle fields a fresh enemy army with no carried-over boons
+    positionCounts = new Map();
     applyOwnedMutations();
     currentTurn = 'white';
     gameOver = false;
@@ -214,7 +250,7 @@ async function main(): Promise<void> {
     pieceView.clear();
     pieceView.syncPieces(board.pieces);
     scene3d.worldGroup.rotation.y = humanColor === 'black' ? Math.PI : 0;
-    resetView(scene3d); // snap the camera back to its home framing at the start of every battle
+    applyViewPreset(scene3d, settings.view); // return the camera to the chosen framing each battle
     rewardScreen.hide();
 
     if (currentTurn === humanColor) {
@@ -291,12 +327,32 @@ async function main(): Promise<void> {
    * `note` is an extra announcement (e.g. an enemy perk gain) appended to the status line. */
   async function advanceTurnAfter(moverColor: Color, note?: string | null): Promise<boolean> {
     const nextColor = opponentColor(moverColor);
+
+    // King's Fence: the first attack that would give check breaks the fence instead.
+    // The breach happens BEFORE check/mate evaluation, so from this moment normal chess
+    // law applies — the defender must deal with the standing threat like any check.
+    const nextKing = findKing(board, nextColor);
+    if (nextKing?.fenceIntact && isSquareAttacked(board, nextKing.pos, moverColor)) {
+      nextKing.fenceIntact = false;
+      const fenceNote = nextColor === humanColor ? '🚧 Your fence is breached!' : "🚧 The enemy king's fence is breached!";
+      note = note ? `${note} ${fenceNote}` : fenceNote;
+    }
+
     if (isCheckmate(board, nextColor)) {
       await onBattleEnd(moverColor);
       return true;
     }
     if (isStalemate(board, nextColor)) {
-      await onDraw();
+      await onDraw('Stalemate! Neither side can move.');
+      return true;
+    }
+
+    // Classic threefold-repetition rule: the same position (same side to move) three times is a draw.
+    const key = positionKey(board, nextColor);
+    const occurrences = (positionCounts.get(key) ?? 0) + 1;
+    positionCounts.set(key, occurrences);
+    if (occurrences >= 3) {
+      await onDraw('Draw — the same position occurred three times.');
       return true;
     }
 
@@ -443,12 +499,12 @@ async function main(): Promise<void> {
     }
   }
 
-  async function onDraw(): Promise<void> {
+  async function onDraw(reason: string): Promise<void> {
     gameOver = true;
     inputLocked = true;
     hud.setAbilityButtons([]);
-    hud.setStatus('Stalemate — a draw.');
-    rewardScreen.show('Stalemate! Neither side can move. Try again?', [], () => resetRun(), () => resetRun());
+    hud.setStatus(`${reason} — a draw.`);
+    rewardScreen.show(`${reason} Try again?`, [], () => resetRun(), () => resetRun());
   }
 
   // --- Hover tooltip: point at any piece to see what it is and what its perks do ---

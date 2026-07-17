@@ -13,6 +13,7 @@ const LEGAL_COLOR = 0x8fd66b;
 const LEGAL_CAPTURE_COLOR = 0xe0483f;
 const DARK_TILE = 0x2a232b;
 const PALE_TILE = 0x8d7a5c;
+const CRACKED_TILE = 0x4a3028;
 const HOLE_TILE = 0x08080c;
 
 const selectGeo = new THREE.RingGeometry(0.32, 0.42, 32);
@@ -61,6 +62,13 @@ export class BoardView3D {
       mat.color.set(HOLE_TILE);
       mat.emissive.set(0x330500);
       mat.emissiveIntensity = 0.5;
+    } else if (state === 'cracked') {
+      // Cracked but standing: sunken a touch, scorched, with an ember glow seeping through —
+      // clearly telegraphed as dangerous ground before it ever collapses.
+      tile.position.y = -0.14;
+      mat.color.set(CRACKED_TILE);
+      mat.emissive.set(0xff3300);
+      mat.emissiveIntensity = 0.28;
     } else {
       tile.position.y = -0.09;
       const isDark = (x + y) % 2 === 0;

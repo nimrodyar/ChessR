@@ -1,4 +1,4 @@
-import { inBounds, isHole, pieceAt } from '../core/board';
+import { inBounds, isCracked, isHole, pieceAt } from '../core/board';
 import type { AbilityDef, BoardMutation } from '../core/abilities';
 import type { MutationId } from '../core/pieces';
 
@@ -7,7 +7,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'pawnLandmine',
     icon: '💥',
     name: 'Death Blast',
-    description: 'When this pawn dies, its square becomes a pit. Any piece that steps on a pit falls in and is lost.',
+    description: 'When this pawn dies, its square cracks. Cracked squares collapse into the abyss when stepped on.',
     trigger: 'onDeath',
     pieceType: 'pawn',
     rarity: 'common',
@@ -17,7 +17,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'pawnZealot',
     icon: '🔆',
     name: 'Death Cross',
-    description: 'When this pawn dies, the 4 squares next to it (up, down, left, right) become pits.',
+    description: 'When this pawn dies, the 4 squares next to it (up, down, left, right) crack. Cracked squares collapse when stepped on.',
     trigger: 'onDeath',
     pieceType: 'pawn',
     rarity: 'rare',
@@ -38,7 +38,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'knightCharge',
     icon: '🐎',
     name: 'Corner Break',
-    description: 'When this knight captures, the corner square it jumped around becomes a pit.',
+    description: 'When this knight captures, the corner square it jumped around cracks (collapses when stepped on).',
     trigger: 'onCapture',
     pieceType: 'knight',
     rarity: 'common',
@@ -55,7 +55,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'knightShadowStep',
     icon: '🥷',
     name: 'Shadow Step',
-    description: 'When this knight captures, the square it jumped from becomes a pit.',
+    description: 'When this knight captures, the square it jumped from cracks (collapses when stepped on).',
     trigger: 'onCapture',
     pieceType: 'knight',
     rarity: 'uncommon',
@@ -68,7 +68,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'bishopArsonist',
     icon: '🔥',
     name: 'Burn Path',
-    description: 'When this bishop captures, the next square past the victim (same diagonal) becomes a pit.',
+    description: 'When this bishop captures, the next square past the victim (same diagonal) cracks (collapses when stepped on).',
     trigger: 'onCapture',
     pieceType: 'bishop',
     rarity: 'common',
@@ -85,7 +85,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'bishopWard',
     icon: '✨',
     name: 'Repair',
-    description: 'Button, once per battle: fixes one pit next to this bishop.',
+    description: 'Button, once per battle: repairs one damaged square next to this bishop (cracks anytime; a pit only after it has swallowed a piece).',
     trigger: 'activated',
     pieceType: 'bishop',
     rarity: 'uncommon',
@@ -94,7 +94,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
         for (let dx = -1; dx <= 1; dx++) {
           if (dx === 0 && dy === 0) continue;
           const pos = { x: piece.pos.x + dx, y: piece.pos.y + dy };
-          if (inBounds(pos) && isHole(board, pos)) {
+          if (inBounds(pos) && (isHole(board, pos) || isCracked(board, pos))) {
             return [{ type: 'restoreTile', pos }];
           }
         }
@@ -106,7 +106,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'rookDemolisher',
     icon: '🔨',
     name: 'Ram',
-    description: 'When this rook captures, the square directly behind the victim becomes a pit.',
+    description: 'When this rook captures, the square directly behind the victim cracks (collapses when stepped on).',
     trigger: 'onCapture',
     pieceType: 'rook',
     rarity: 'common',
@@ -123,7 +123,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'rookSiegeEngine',
     icon: '💣',
     name: 'Double Ram',
-    description: 'When this rook captures, the two squares behind the victim become pits.',
+    description: 'When this rook captures, the two squares behind the victim crack (collapse when stepped on).',
     trigger: 'onCapture',
     pieceType: 'rook',
     rarity: 'rare',
@@ -143,7 +143,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'queenEarthquake',
     icon: '🌋',
     name: 'Earthquake',
-    description: 'Button, once per battle: the 8 squares around this queen become pits. Pieces standing on them fall in.',
+    description: 'Button, once per battle: the 8 squares around this queen crack. Already-cracked squares collapse, dropping whoever stands there.',
     trigger: 'activated',
     pieceType: 'queen',
     rarity: 'rare',
@@ -163,7 +163,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'queenCataclysm',
     icon: '☄️',
     name: 'Cataclysm',
-    description: 'Button, once per battle: every square within 2 of this queen becomes a pit (24 squares). Pieces standing on them fall in.',
+    description: 'Button, once per battle: every square within 2 of this queen (24 squares) cracks — and already-cracked ones collapse, dropping whoever stands there.',
     trigger: 'activated',
     pieceType: 'queen',
     rarity: 'legendary',
@@ -183,7 +183,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'kingBunker',
     icon: '🛡️',
     name: 'Safe Square',
-    description: 'Always on: the square under this king can never become a pit.',
+    description: 'Always on: the square under this king can never crack or collapse.',
     trigger: 'onDeath',
     pieceType: 'king',
     rarity: 'uncommon',
@@ -197,7 +197,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'pawnBloodFrenzy',
     icon: '🩸',
     name: 'Frenzy',
-    description: 'When this pawn captures, the square it attacked from becomes a pit. Tradeoff: this pawn is frozen for 1 turn.',
+    description: 'When this pawn captures, the square it attacked from cracks. Tradeoff: this pawn is frozen for 1 turn.',
     trigger: 'onCapture',
     pieceType: 'pawn',
     rarity: 'uncommon',
@@ -243,7 +243,7 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
     id: 'kingIronVigil',
     icon: '💠',
     name: 'Royal Repair',
-    description: 'Button, once per battle: fixes every pit next to this king. Tradeoff: this king is frozen for 1 turn.',
+    description: 'Button, once per battle: repairs every damaged square next to this king (cracks anytime; pits only after they swallow a piece). Tradeoff: this king is frozen for 1 turn.',
     trigger: 'activated',
     pieceType: 'king',
     rarity: 'legendary',
@@ -253,11 +253,46 @@ export const ABILITIES: Record<MutationId, AbilityDef> = {
         for (let dx = -1; dx <= 1; dx++) {
           if (dx === 0 && dy === 0) continue;
           const pos = { x: piece.pos.x + dx, y: piece.pos.y + dy };
-          if (inBounds(pos) && isHole(board, pos)) mutations.push({ type: 'restoreTile', pos });
+          if (inBounds(pos) && (isHole(board, pos) || isCracked(board, pos))) mutations.push({ type: 'restoreTile', pos });
         }
       }
       mutations.push({ type: 'freeze', pieceId: piece.id, turns: 2 });
       return mutations;
     },
+  },
+  queenResurrection: {
+    id: 'queenResurrection',
+    icon: '🕯️',
+    name: 'Resurrection',
+    description:
+      'Button, once per battle: your most valuable fallen piece returns to an empty square beside this queen.',
+    trigger: 'activated',
+    pieceType: 'queen',
+    rarity: 'legendary',
+    effect: ({ board, piece }) => {
+      const hasFallen = board.fallen.some((p) => p.color === piece.color && p.type !== 'king');
+      if (!hasFallen) return [];
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const pos = { x: piece.pos.x + dx, y: piece.pos.y + dy };
+          if (!inBounds(pos) || isHole(board, pos) || isCracked(board, pos) || pieceAt(board, pos)) continue;
+          return [{ type: 'revive', pos, color: piece.color }];
+        }
+      }
+      return [];
+    },
+  },
+  kingFence: {
+    id: 'kingFence',
+    icon: '🚧',
+    name: "King's Fence",
+    description:
+      'A fence guards this king: the first enemy attack that would give check breaks the fence instead of checking. Once broken, normal chess rules apply.',
+    trigger: 'onDeath',
+    pieceType: 'king',
+    rarity: 'legendary',
+    // Passive — enforced via king.fenceIntact in rules.ts/main.ts rather than fired as an event.
+    effect: () => [],
   },
 };

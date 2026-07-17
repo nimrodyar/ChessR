@@ -5,9 +5,19 @@ import { BOARD_SIZE } from '../../core/board';
 
 const BOARD_OFFSET = (BOARD_SIZE - 1) / 2;
 
-/** The camera's home framing — used at startup and by "Reset View". */
-const DEFAULT_CAMERA_POS = { x: 0.5, y: 6.6, z: 7.6 };
-const DEFAULT_TARGET = { x: 0, y: 0.3, z: 0 };
+/** Camera framings the player can switch between in Options. '3d' is the home view. */
+export type ViewPreset = '3d' | 'top' | 'fp';
+
+const VIEW_PRESETS: Record<ViewPreset, { pos: { x: number; y: number; z: number }; target: { x: number; y: number; z: number } }> = {
+  '3d': { pos: { x: 0.5, y: 6.6, z: 7.6 }, target: { x: 0, y: 0.3, z: 0 } },
+  // Straight overhead: the board reads like a flat 2D diagram.
+  top: { pos: { x: 0, y: 13.2, z: 0.02 }, target: { x: 0, y: 0, z: 0 } },
+  // Low behind the player's army, eye-level with the pieces.
+  fp: { pos: { x: 0, y: 1.9, z: 6.4 }, target: { x: 0, y: 0.5, z: 0 } },
+};
+
+const DEFAULT_CAMERA_POS = VIEW_PRESETS['3d'].pos;
+const DEFAULT_TARGET = VIEW_PRESETS['3d'].target;
 
 export interface Scene3D {
   scene: THREE.Scene;
@@ -183,24 +193,34 @@ export function createScene3D(container: HTMLElement): Scene3D {
   };
 }
 
-/** Glides the camera back to its home framing. Works even while the view is locked
+/** Glides the camera to one of the named framings. Works even while the view is locked
  * (OrbitControls disabled), since it drives the camera directly rather than through input. */
-export function resetView(scene3d: Scene3D): void {
-  gsap.to(scene3d.camera.position, {
-    x: DEFAULT_CAMERA_POS.x,
-    y: DEFAULT_CAMERA_POS.y,
-    z: DEFAULT_CAMERA_POS.z,
-    duration: 0.6,
-    ease: 'power2.inOut',
-  });
+export function applyViewPreset(scene3d: Scene3D, preset: ViewPreset): void {
+  const { pos, target } = VIEW_PRESETS[preset];
+  gsap.to(scene3d.camera.position, { x: pos.x, y: pos.y, z: pos.z, duration: 0.6, ease: 'power2.inOut' });
   gsap.to(scene3d.controls.target, {
-    x: DEFAULT_TARGET.x,
-    y: DEFAULT_TARGET.y,
-    z: DEFAULT_TARGET.z,
+    x: target.x,
+    y: target.y,
+    z: target.z,
     duration: 0.6,
     ease: 'power2.inOut',
     onUpdate: () => scene3d.controls.update(),
     onComplete: () => scene3d.controls.update(),
+  });
+}
+
+/** Toggles the renderer between full quality and a lighter mode for weaker machines. */
+export function applyGraphicsQuality(scene3d: Scene3D, quality: 'high' | 'low'): void {
+  scene3d.renderer.setPixelRatio(quality === 'high' ? Math.min(window.devicePixelRatio, 2) : 1);
+  scene3d.renderer.shadowMap.enabled = quality === 'high';
+  scene3d.scene.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (mesh.material) {
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      mats.forEach((m) => {
+        m.needsUpdate = true;
+      });
+    }
   });
 }
 

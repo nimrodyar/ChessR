@@ -14,6 +14,17 @@ let audioCtx: AudioContext | null = null;
 const buffers: Partial<Record<SfxName, AudioBuffer>> = {};
 const rawFiles: Partial<Record<SfxName, Promise<ArrayBuffer>>> = {};
 
+let sfxEnabled = true;
+let masterVolume = 1;
+
+export function setSfxEnabled(enabled: boolean): void {
+  sfxEnabled = enabled;
+}
+
+export function setSfxVolume(volume: number): void {
+  masterVolume = Math.max(0, Math.min(1, volume));
+}
+
 // Start downloading immediately at module load — decoding waits for the
 // AudioContext, which browsers only allow after the first user gesture.
 for (const name of ['select', 'move', 'capture'] as const) {
@@ -45,6 +56,7 @@ async function bufferFor(ctx: AudioContext, name: SfxName): Promise<AudioBuffer 
 }
 
 function play(name: SfxName, volume: number): void {
+  if (!sfxEnabled || masterVolume === 0) return;
   const ctx = context();
   if (!ctx) return;
   void bufferFor(ctx, name).then((buffer) => {
@@ -53,7 +65,7 @@ function play(name: SfxName, volume: number): void {
     src.buffer = buffer;
     src.playbackRate.value = 0.96 + Math.random() * 0.08; // subtle mechanical variation
     const gain = ctx.createGain();
-    gain.gain.value = volume;
+    gain.gain.value = volume * masterVolume;
     src.connect(gain);
     gain.connect(ctx.destination);
     src.start();

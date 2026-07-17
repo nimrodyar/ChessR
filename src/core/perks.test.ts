@@ -7,6 +7,7 @@ function boardWithAllTypes(color: 'white' | 'black'): Board {
   const board: Board = {
     tiles: Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => ({ state: 'normal' as const }))),
     pieces: [],
+    fallen: [],
   };
   const types = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'] as const;
   types.forEach((t, i) => board.pieces.push(makePiece(t, color, { x: i, y: 4 })));
